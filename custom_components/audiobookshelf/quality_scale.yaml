@@ -1,0 +1,150 @@
+rules:
+  # ---------------- Bronze ----------------
+  config-flow: done
+  config-flow-test-coverage:
+    status: done
+    comment: >-
+      100% of config_flow.py, covering user, reauth, reconfigure and options
+      flows, every error branch, and API key minting and revocation.
+  test-before-configure:
+    status: done
+    comment: >-
+      The flow probes the unauthenticated /status endpoint, asserts app ==
+      "audiobookshelf", then validates the API key against /api/authorize.
+  test-before-setup: done
+  unique-config-entry:
+    status: done
+    comment: >-
+      Audiobookshelf exposes no server GUID, so the unique id is host:port.
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  entity-event-setup:
+    status: done
+    comment: Socket subscriptions live on the coordinator, torn down in async_shutdown.
+  action-setup:
+    status: done
+    comment: continue_listening is registered in async_setup, not async_setup_entry.
+  appropriate-polling:
+    status: done
+    comment: >-
+      Push-first. The REST poll is a fallback, 5 minutes idle and 30 seconds
+      while a session is live -- Audiobookshelf emits nothing when a client
+      pauses, so a pause can only be noticed by polling.
+  common-modules: done
+  brands:
+    status: todo
+    comment: >-
+      Assets are prepared in brands/custom_integrations/audiobookshelf/
+      (256x256 and 512x512, square, transparent). The PR to
+      home-assistant/brands has not been opened yet.
+  dependency-transparency:
+    status: done
+    comment: aioaudiobookshelf is Apache-2.0, on PyPI, asyncio-native.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-actions: done
+  docs-triggers:
+    status: exempt
+    comment: No custom triggers yet.
+  docs-conditions:
+    status: exempt
+    comment: No custom conditions.
+
+  # ---------------- Silver ----------------
+  integration-owner: done
+  config-entry-unloading: done
+  reauthentication-flow:
+    status: done
+    comment: >-
+      Audiobookshelf API keys may be created with an expiry. A 401 raises
+      ConfigEntryAuthFailed and prompts for a new key.
+  test-coverage:
+    status: done
+    comment: >-
+      141 tests, 99% overall, every module at or above 98%. Includes regression
+      tests for the two bugs that once overwrote a listener's saved position.
+  entity-unavailable:
+    status: done
+    comment: Library entities go unavailable when the library disappears server-side.
+  log-when-unavailable:
+    status: done
+    comment: Handled by DataUpdateCoordinator's UpdateFailed.
+  action-exceptions:
+    status: done
+    comment: >-
+      ServiceValidationError for bad input (unknown user, unplayable target,
+      nothing in progress); HomeAssistantError when Audiobookshelf fails.
+  parallel-updates: done
+  docs-installation-parameters: done
+  docs-configuration-parameters: done
+
+  # ---------------- Gold ----------------
+  devices: done
+  diagnostics:
+    status: done
+    comment: Redacts the admin key, every minted per-user key, and all user ids.
+  discovery:
+    status: exempt
+    comment: >-
+      Audiobookshelf advertises nothing over mDNS/SSDP/zeroconf. Verified by a
+      live LAN browse against a 2.35.1 server.
+  discovery-update-info:
+    status: exempt
+    comment: See discovery.
+  dynamic-devices:
+    status: done
+    comment: Libraries created and users invited after setup appear without a restart.
+  stale-devices:
+    status: done
+    comment: >-
+      Devices for deleted libraries and removed users are pruned on each
+      coordinator update; async_remove_config_entry_device allows manual removal
+      once the server agrees they are gone.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default:
+    status: done
+    comment: >-
+      Media players for accounts that have not listened in 30 days are created
+      but disabled. Size and open-session sensors are diagnostic.
+  entity-translations: done
+  exception-translations:
+    status: done
+    comment: All twelve raised messages use translation keys.
+  icon-translations: done
+  reconfiguration-flow:
+    status: done
+    comment: URL and API key can be changed; a key for a different server is rejected.
+  repair-issues:
+    status: done
+    comment: >-
+      Warns 14 days before an expiring API key lapses, read from the key's own
+      JWT `exp` claim. Clears itself when a non-expiring key is configured.
+  docs-data-update: done
+  docs-supported-devices:
+    status: exempt
+    comment: This is a service integration, not a device.
+  docs-supported-functions: done
+  docs-known-limitations:
+    status: done
+    comment: >-
+      No remote control of Audiobookshelf clients; players that cannot seek get
+      no progress write-back; e-book vs audiobook libraries are told apart by
+      content, not by type.
+  docs-troubleshooting: done
+  docs-examples: done
+  docs-use-cases: done
+
+  # ---------------- Platinum ----------------
+  async-dependency: done
+  inject-websession: done
+  strict-typing:
+    status: todo
+    comment: >-
+      Our own code passes `mypy --strict` with no errors and ships py.typed.
+      The rule additionally requires the backing library to be PEP-561
+      compliant, and aioaudiobookshelf does not yet ship a py.typed marker.
+      Upstream PR to music-assistant/aioaudiobookshelf pending; nothing else
+      blocks Platinum.

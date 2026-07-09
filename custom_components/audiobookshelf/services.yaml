@@ -1,0 +1,25 @@
+continue_listening:
+  fields:
+    entity_id:
+      required: true
+      example: media_player.kitchen_speaker
+      selector:
+        entity:
+          filter:
+            # PAUSE weeds out talkback and notification speakers, which offer
+            # PLAY_MEDIA + STOP and nothing else. Unlike SEEK, it is advertised
+            # while the player is idle, so the picker can rely on it.
+            - domain: media_player
+              supported_features:
+                - media_player.MediaPlayerEntityFeature.PLAY_MEDIA
+                - media_player.MediaPlayerEntityFeature.PAUSE
+    user:
+      required: false
+      example: Brian
+      selector:
+        text:
+    seek:
+      required: false
+      default: true
+      selector:
+        boolean:

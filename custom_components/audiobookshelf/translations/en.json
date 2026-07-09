@@ -1,0 +1,160 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Audiobookshelf",
+        "description": "In Audiobookshelf, go to Settings → API Keys and create a new key. Leave the expiry blank so the key never expires — an expiring key will eventually stop the integration until you enter a new one.",
+        "data": {
+          "url": "Server URL",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "url": "For example http://192.168.1.10:13378",
+          "api_key": "Settings → API Keys → New API Key. An admin key is needed for server-wide sensors."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Audiobookshelf",
+        "description": "Your Audiobookshelf API key is no longer valid. Create a new one under Settings → API Keys and enter it below.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Audiobookshelf",
+        "description": "Change the server address or replace the API key. It must be a key for the same Audiobookshelf server.",
+        "data": {
+          "url": "Server URL",
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the server. Check the URL and that Audiobookshelf is running.",
+      "invalid_auth": "Audiobookshelf rejected that API key.",
+      "not_audiobookshelf": "Something answered at that address, but it is not an Audiobookshelf server.",
+      "unknown": "Unexpected error. Check the Home Assistant logs."
+    },
+    "abort": {
+      "already_configured": "This Audiobookshelf server is already set up.",
+      "reauth_successful": "Audiobookshelf reconnected successfully.",
+      "reconfigure_successful": "Audiobookshelf reconfigured successfully.",
+      "wrong_server": "That is a different Audiobookshelf server. To move to another server, add it as a new integration."
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "The Audiobookshelf integration is not loaded."
+    },
+    "no_linked_users": {
+      "message": "No Audiobookshelf users are linked. Open the integration's options and link at least one user before using this action."
+    },
+    "unknown_user": {
+      "message": "{user} is not a linked Audiobookshelf user. Linked users: {linked}."
+    },
+    "ambiguous_user": {
+      "message": "Could not tell which Audiobookshelf user this is for. Pass a user, or map your Home Assistant account to an Audiobookshelf user in the integration's options."
+    },
+    "entity_not_found": {
+      "message": "{entity_id} does not exist."
+    },
+    "cannot_play_media": {
+      "message": "{entity_id} cannot play media."
+    },
+    "cannot_pause": {
+      "message": "{entity_id} cannot be paused, so it is almost certainly a notification or talkback speaker rather than something to listen to an audiobook on. Refusing to play."
+    },
+    "nothing_in_progress": {
+      "message": "{user} has nothing in progress on Audiobookshelf."
+    },
+    "cannot_connect": {
+      "message": "Could not reach Audiobookshelf: {error}"
+    },
+    "session_failed": {
+      "message": "Could not start a playback session: {error}"
+    },
+    "no_audio_tracks": {
+      "message": "Audiobookshelf returned no audio tracks for that item."
+    },
+    "scan_failed": {
+      "message": "Could not start the library scan: {error}"
+    }
+  },
+  "issues": {
+    "api_key_expiring": {
+      "title": "Your Audiobookshelf API key is about to expire",
+      "description": "The API key Home Assistant uses for {url} expires on {expires}. When it does, this integration will stop working until you enter a new one.\n\nCreate a replacement in Audiobookshelf under Settings → API Keys, leaving the expiry blank so it never lapses, then reconfigure the integration with the new key."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Link Audiobookshelf users",
+        "description": "Pick the people whose books you want to resume on a speaker. Audiobookshelf only lets an account update its own listening progress, so Home Assistant has to act as each person. An API key is created for everyone you select, and revoked if you unselect them. No passwords are needed.",
+        "data": {
+          "linked_users": "Users to link"
+        }
+      },
+      "map": {
+        "title": "Match them to Home Assistant accounts",
+        "description": "Optional. Mapping {users} to Home Assistant accounts lets the Continue listening action work out whose book to resume when someone presses a dashboard button. Automations run without a user, so leave this unset if you always pass the user explicitly.",
+        "data": {}
+      }
+    },
+    "error": {
+      "key_failed": "Could not create an API key. The configured key must belong to an Audiobookshelf admin."
+    }
+  },
+  "services": {
+    "continue_listening": {
+      "name": "Continue listening",
+      "description": "Resume a linked user's current audiobook on a media player, picking up where they left off and syncing progress back to Audiobookshelf.",
+      "fields": {
+        "entity_id": {
+          "name": "Media player",
+          "description": "The speaker to play on. It must support playing media; without seek support, playback restarts from the beginning of the track."
+        },
+        "user": {
+          "name": "Audiobookshelf user",
+          "description": "Whose book to resume. Defaults to the Home Assistant account that invoked this action, if it is mapped, or to the only linked user."
+        },
+        "seek": {
+          "name": "Resume at position",
+          "description": "Seek to the saved position after playback starts. Turn off to start the track from the beginning."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "recently_added": {
+        "name": "Recently added"
+      },
+      "items": {
+        "name": "Items"
+      },
+      "duration": {
+        "name": "Duration"
+      },
+      "size": {
+        "name": "Size"
+      },
+      "listening_now": {
+        "name": "Listening now"
+      },
+      "users_online": {
+        "name": "Open sessions"
+      }
+    },
+    "binary_sensor": {
+      "realtime": {
+        "name": "Realtime updates"
+      }
+    },
+    "button": {
+      "scan_library": {
+        "name": "Scan library"
+      }
+    }
+  }
+}

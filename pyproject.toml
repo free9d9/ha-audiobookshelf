@@ -1,0 +1,45 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+norecursedirs = [".git"]
+addopts = "--cov=custom_components.audiobookshelf --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["custom_components/audiobookshelf"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "D", "ANN"]
+ignore = ["D203", "D213", "ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "ANN"]
+
+[tool.mypy]
+# Home Assistant 2026.6 requires Python 3.14, and its own sources use 3.14 syntax.
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+disallow_any_generics = true
+# aioaudiobookshelf ships no py.typed marker yet (upstream PR pending), so its
+# types cannot be seen from here. Everything of ours stays strictly typed.
+[[tool.mypy.overrides]]
+module = ["aioaudiobookshelf.*", "socketio.*"]
+ignore_missing_imports = true
+
+# Home Assistant does not declare __all__ in its packages, so strict mode cannot
+# see re-exported names such as HomeAssistantView. This relaxes the check for
+# their modules only; ours stay strict.
+[[tool.mypy.overrides]]
+module = ["homeassistant.*"]
+implicit_reexport = true

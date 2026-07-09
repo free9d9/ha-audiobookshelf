@@ -1,0 +1,24 @@
+{
+  "domain": "audiobookshelf",
+  "name": "Audiobookshelf",
+  "codeowners": [
+    "@free9d9"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http"
+  ],
+  "documentation": "https://github.com/free9d9/ha-audiobookshelf",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/free9d9/ha-audiobookshelf/issues",
+  "loggers": [
+    "aioaudiobookshelf",
+    "socketio",
+    "engineio"
+  ],
+  "requirements": [
+    "aioaudiobookshelf==0.1.22"
+  ],
+  "version": "0.4.0"
+}

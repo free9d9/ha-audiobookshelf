@@ -1,0 +1,40 @@
+{
+  "entity": {
+    "sensor": {
+      "recently_added": {
+        "default": "mdi:bookshelf"
+      },
+      "items": {
+        "default": "mdi:book-multiple"
+      },
+      "duration": {
+        "default": "mdi:clock-outline"
+      },
+      "size": {
+        "default": "mdi:harddisk"
+      },
+      "listening_now": {
+        "default": "mdi:headphones",
+        "state": {
+          "0": "mdi:headphones-off"
+        }
+      },
+      "users_online": {
+        "default": "mdi:account-multiple"
+      }
+    },
+    "binary_sensor": {
+      "realtime": {
+        "default": "mdi:lightning-bolt",
+        "state": {
+          "off": "mdi:lightning-bolt-outline"
+        }
+      }
+    },
+    "button": {
+      "scan_library": {
+        "default": "mdi:folder-refresh"
+      }
+    }
+  }
+}
