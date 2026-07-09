@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import AsyncMock
 
 import pytest
-
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import DOMAIN
 from homeassistant.components.media_player import MediaPlayerState, MediaType
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.audiobookshelf.api import AudiobookshelfRestError
+from custom_components.audiobookshelf.const import DOMAIN
 
 from .conftest import open_session
 

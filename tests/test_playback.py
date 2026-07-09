@@ -5,6 +5,15 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.components.media_player import (
+    MediaPlayerEntityFeature as Feature,
+)
+from homeassistant.components.media_player import (
+    MediaPlayerState,
+)
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_SUPPORTED_FEATURES
+from homeassistant.core import Context
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from custom_components.audiobookshelf.api import AudiobookshelfRestError
 from custom_components.audiobookshelf.const import (
@@ -12,13 +21,6 @@ from custom_components.audiobookshelf.const import (
     DOMAIN,
     SERVICE_CONTINUE_LISTENING,
 )
-from homeassistant.components.media_player import (
-    MediaPlayerEntityFeature as Feature,
-    MediaPlayerState,
-)
-from homeassistant.const import ATTR_ENTITY_ID, ATTR_SUPPORTED_FEATURES
-from homeassistant.core import Context
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from .conftest import make_api_key
 

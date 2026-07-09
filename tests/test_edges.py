@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from aiohttp import ClientError
 from aioaudiobookshelf.exceptions import LoginError
+from aiohttp import ClientError
+from homeassistant.components.media_player import MediaPlayerState
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import ATTR_SUPPORTED_FEATURES
+from homeassistant.core import State
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from custom_components.audiobookshelf.api import AudiobookshelfRest
-from custom_components.audiobookshelf.const import DOMAIN
 from custom_components.audiobookshelf.coordinator import (
-    UserData,
     _looks_like_ebook_library,
     _ms_to_dt,
     _parse_session,
@@ -21,11 +24,6 @@ from custom_components.audiobookshelf.playback import (
     _extrapolated_position,
     _track_for_position,
 )
-from homeassistant.components.media_player import MediaPlayerState
-from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import ATTR_SUPPORTED_FEATURES
-from homeassistant.core import State
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .conftest import URL, open_session
 
@@ -132,7 +130,7 @@ def test_extrapolated_position_edges() -> None:
     paused = State("media_player.x", "paused", {"media_position": 100})
     assert _extrapolated_position(paused) == 100.0
 
-    updated = datetime.now(timezone.utc) - timedelta(seconds=5)
+    updated = datetime.now(UTC) - timedelta(seconds=5)
     playing = State(
         "media_player.x",
         MediaPlayerState.PLAYING,
@@ -141,7 +139,7 @@ def test_extrapolated_position_edges() -> None:
     assert _extrapolated_position(playing) == pytest.approx(105, abs=2)
 
     # A clock that ran backwards must not rewind the book.
-    future = datetime.now(timezone.utc) + timedelta(seconds=60)
+    future = datetime.now(UTC) + timedelta(seconds=60)
     skewed = State(
         "media_player.x",
         MediaPlayerState.PLAYING,

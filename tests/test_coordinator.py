@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import time
-from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from freezegun.api import FrozenDateTimeFactory
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.helpers import issue_registry as ir
 
 from custom_components.audiobookshelf.api import AudiobookshelfRestError
 from custom_components.audiobookshelf.const import (
@@ -18,9 +17,6 @@ from custom_components.audiobookshelf.const import (
     SCAN_INTERVAL_LISTENING,
 )
 from custom_components.audiobookshelf.coordinator import _api_key_expiry
-from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import issue_registry as ir
 
 from .conftest import make_api_key, open_session
 
@@ -220,10 +216,10 @@ async def test_expiring_key_raises_a_repair_issue(
     hass, mock_abs_client, mock_rest
 ) -> None:
     """Warn before the key lapses, not after."""
+    from homeassistant.const import CONF_API_KEY, CONF_URL
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.audiobookshelf.const import CONF_LINKED_USERS
-    from homeassistant.const import CONF_API_KEY, CONF_URL
 
     from .conftest import URL
 

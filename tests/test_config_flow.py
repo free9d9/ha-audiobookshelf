@@ -5,14 +5,14 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from aiohttp import ClientError
 from aioaudiobookshelf.exceptions import LoginError
-
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
+from aiohttp import ClientError
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.data_entry_flow import FlowResultType
+
+from custom_components.audiobookshelf.api import AudiobookshelfRestError
+from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
 
 from .conftest import API_KEY, URL
 

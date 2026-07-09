@@ -10,10 +10,10 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.const import CONF_API_KEY, CONF_URL
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
-from homeassistant.const import CONF_API_KEY, CONF_URL
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 

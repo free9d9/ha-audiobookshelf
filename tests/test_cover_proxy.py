@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 from custom_components.audiobookshelf.cover_proxy import (
     _SIGNED_CACHE,
     signed_cover_url,
@@ -48,17 +46,11 @@ async def test_signed_url_is_resigned_near_expiry(hass, init_integration) -> Non
     assert fresh.startswith("/api/audiobookshelf/cover/")
 
 
-async def test_cover_view_proxies_the_image(
-    hass, hass_client, init_integration
-) -> None:
+async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
     """The browser gets the bytes, and cache headers the server never sent."""
-    client = await hass_client()
-    url = signed_cover_url(hass, init_integration.entry_id, "item-1", 55)
+    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
 
-    with patch("custom_components.audiobookshelf.cover_proxy.async_get_clientsession"):
-        from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
-
-        view = AudiobookshelfCoverView(hass)
+    view = AudiobookshelfCoverView(hass)
 
     class _Response:
         status = 200
