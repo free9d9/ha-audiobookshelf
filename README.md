@@ -191,6 +191,65 @@ server, shape how this works:
   by whether their items carry an audio duration, which also decides cover aspect ratio
   (1:1 for audiobooks, 2:3 for e-books).
 
+## Dashboards
+
+**No custom card is needed, and none is shipped.** The entities are ordinary Home
+Assistant entities, so the built-in cards render them properly. That is the point of
+modelling playback as a real `media_player` rather than inventing attributes.
+
+**Now playing.** The stock media control card gives you cover art, title, author, and a
+progress bar that advances on its own — Home Assistant extrapolates it from
+`media_position_updated_at`. Artwork is proxied and signed by Home Assistant, so nothing
+reaches for your Audiobookshelf host.
+
+```yaml
+type: media-control
+entity: media_player.audiobookshelf_brian
+```
+
+**Who is listening.** Remember that `open_sessions` counts sessions Audiobookshelf never
+closed; `listening_now` counts people actually listening.
+
+```yaml
+type: entities
+title: Audiobookshelf
+entities:
+  - sensor.audiobookshelf_listening_now
+  - entity: sensor.audiobookshelf_open_sessions
+    name: Open sessions (incl. stale)
+  - binary_sensor.audiobookshelf_realtime_updates
+  - sensor.audiobooks_items
+  - sensor.audiobooks_duration
+  - sensor.audiobooks_size
+  - button.audiobooks_scan_library
+```
+
+**Recently added.** The `data` attribute is
+[upcoming-media-card](https://github.com/custom-cards/upcoming-media-card) format, header
+row and all, so that card works with no glue:
+
+```yaml
+type: custom:upcoming-media-card
+entity: sensor.audiobooks_recently_added
+title: Recently added audiobooks
+image_style: poster
+```
+
+**A resume button.** Name no user: the action resolves whose book to resume from the Home
+Assistant account that pressed it, provided that account is mapped in the integration's
+options.
+
+```yaml
+type: button
+name: Continue my book
+icon: mdi:play
+tap_action:
+  action: perform-action
+  perform_action: audiobookshelf.continue_listening
+  data:
+    entity_id: media_player.kitchen_speaker
+```
+
 ## What you can do with it
 
 **Know when the bedtime story ends.** The single most-requested Audiobookshelf automation.
