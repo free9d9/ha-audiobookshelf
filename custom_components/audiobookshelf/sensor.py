@@ -18,13 +18,20 @@ from .coordinator import (
     AudiobookshelfConfigEntry,
     AudiobookshelfCoordinator,
     LibraryData,
+    UserData,
     parse_dict_for,
 )
 from .entity import (
     AudiobookshelfEntity,
     AudiobookshelfLibraryEntity,
+    AudiobookshelfUserEntity,
     async_setup_dynamic_entities,
+    listened_recently,
 )
+
+# Calendar buckets exposed per user. `all_time` is Audiobookshelf's own
+# `totalTime`; the rest are summed from its per-day map.
+STATS_PERIODS: tuple[str, ...] = ("today", "week", "month", "year", "all_time")
 
 PARALLEL_UPDATES = 0
 
@@ -39,7 +46,10 @@ async def async_setup_entry(
     async_add_entities(
         [
             AudiobookshelfListeningNowSensor(coordinator),
+            AudiobookshelfOpenSessionsSensor(coordinator),
             AudiobookshelfUsersOnlineSensor(coordinator),
+            AudiobookshelfUsersSensor(coordinator),
+            AudiobookshelfLibrariesSensor(coordinator),
         ]
     )
 
@@ -51,11 +61,23 @@ async def async_setup_entry(
             AudiobookshelfSizeSensor(coordinator, library),
         ]
 
+    def _user_entities(user: UserData) -> list[SensorEntity]:
+        return [
+            AudiobookshelfListeningTimeSensor(coordinator, user, period)
+            for period in STATS_PERIODS
+        ]
+
     async_setup_dynamic_entities(
         coordinator,
         async_add_entities,
         lambda data: data.libraries,
         _library_entities,
+    )
+    async_setup_dynamic_entities(
+        coordinator,
+        async_add_entities,
+        lambda data: data.users,
+        _user_entities,
     )
 
 
@@ -100,16 +122,16 @@ class AudiobookshelfListeningNowSensor(AudiobookshelfEntity, SensorEntity):
         }
 
 
-class AudiobookshelfUsersOnlineSensor(AudiobookshelfEntity, SensorEntity):
+class AudiobookshelfOpenSessionsSensor(AudiobookshelfEntity, SensorEntity):
     """How many users have an open playback session, live or stale."""
 
-    _attr_translation_key = "users_online"
+    _attr_translation_key = "open_sessions"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: AudiobookshelfCoordinator) -> None:
         """Initialise the sensor."""
-        super().__init__(coordinator, "users_online")
+        super().__init__(coordinator, "open_sessions")
 
     @property
     def native_value(self) -> int:
@@ -125,6 +147,123 @@ class AudiobookshelfUsersOnlineSensor(AudiobookshelfEntity, SensorEntity):
                 for u in self.coordinator.data.users.values()
                 if u.session
             ]
+        }
+
+
+class AudiobookshelfUsersOnlineSensor(AudiobookshelfEntity, SensorEntity):
+    """How many users have a live connection to the server.
+
+    Online is not listening. It means an app or the web UI is open, which is
+    what /api/users/online reports.
+    """
+
+    _attr_translation_key = "users_online"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AudiobookshelfCoordinator) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, "users_online")
+
+    @property
+    def native_value(self) -> int:
+        """Number of connected users."""
+        return len(self.coordinator.data.users_online)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Who is connected."""
+        return {"users": self.coordinator.data.users_online}
+
+
+class AudiobookshelfUsersSensor(AudiobookshelfEntity, SensorEntity):
+    """How many accounts exist on the server."""
+
+    _attr_translation_key = "users"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AudiobookshelfCoordinator) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, "users")
+
+    @property
+    def native_value(self) -> int:
+        """Total accounts."""
+        return len(self.coordinator.data.users)
+
+
+class AudiobookshelfLibrariesSensor(AudiobookshelfEntity, SensorEntity):
+    """How many libraries the server holds."""
+
+    _attr_translation_key = "libraries"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AudiobookshelfCoordinator) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, "libraries")
+
+    @property
+    def native_value(self) -> int:
+        """Library count."""
+        return len(self.coordinator.data.libraries)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Their names."""
+        return {
+            "libraries": [lib.name for lib in self.coordinator.data.libraries.values()]
+        }
+
+
+# ----------------------------------------------------------------------- user
+
+
+class AudiobookshelfListeningTimeSensor(AudiobookshelfUserEntity, SensorEntity):
+    """How long one person has listened over a calendar period.
+
+    Audiobookshelf keeps a per-day map of seconds listened, which is bucketed
+    into today, this week, this month and this year against Home Assistant's
+    local date. `all_time` is the server's own running total, because the
+    per-day map does not necessarily reach back to the beginning.
+    """
+
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_suggested_display_precision = 1
+
+    def __init__(
+        self, coordinator: AudiobookshelfCoordinator, user: UserData, period: str
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, user, f"listening_{period}")
+        self._period = period
+        self._attr_translation_key = f"listening_{period}"
+        # Servers accumulate accounts. Five sensors each for a dozen dormant
+        # users is noise, so only recent listeners are enabled by default.
+        self._attr_entity_registry_enabled_default = listened_recently(user)
+
+    @property
+    def native_value(self) -> float | None:
+        """Hours listened in this period."""
+        user = self.user
+        if user is None or user.stats is None:
+            return None
+        seconds: float = getattr(user.stats, self._period)
+        return round(seconds / 3600, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """All-time carries the by-weekday breakdown; the others do not."""
+        user = self.user
+        if self._period != "all_time" or user is None or user.stats is None:
+            return None
+        return {
+            "hours_by_weekday": {
+                day: round(secs / 3600, 2)
+                for day, secs in user.stats.by_weekday.items()
+            }
         }
 
 

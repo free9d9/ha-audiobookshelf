@@ -5,12 +5,14 @@ from __future__ import annotations
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
 from .cover_proxy import AudiobookshelfCoverView
 from .playback import async_setup_services, async_teardown
+from .progress import async_setup_remove_progress
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -25,6 +27,38 @@ _VIEW_REGISTERED = f"{DOMAIN}_cover_view"
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register actions, which must exist whether or not an entry is loaded."""
     await async_setup_services(hass)
+    await async_setup_remove_progress(hass)
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: AudiobookshelfConfigEntry
+) -> bool:
+    """Migrate an older config entry.
+
+    1.1 -> 1.2: the open-sessions sensor was keyed `users_online`, which was
+    always wrong (it counts sessions, not connected users) and now collides with
+    a real `users_online` sensor. Rename the unique id so the existing entity,
+    its history and its entity id all carry over, and let the genuinely new
+    sensor take the freed key.
+    """
+    if entry.version > 1:
+        # Downgrades are not supported.
+        return False
+
+    if entry.minor_version < 2:
+
+        @callback
+        def _rename(
+            registry_entry: er.RegistryEntry,
+        ) -> dict[str, str] | None:
+            if registry_entry.unique_id == f"{entry.entry_id}_users_online":
+                return {"new_unique_id": f"{entry.entry_id}_open_sessions"}
+            return None
+
+        await er.async_migrate_entries(hass, entry.entry_id, _rename)
+        hass.config_entries.async_update_entry(entry, minor_version=2)
+
     return True
 
 

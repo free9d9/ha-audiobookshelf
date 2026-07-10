@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.core import callback
@@ -11,7 +12,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, USER_ENABLE_DAYS
 from .coordinator import (
     AudiobookshelfCoordinator,
     AudiobookshelfData,
@@ -101,6 +102,20 @@ class AudiobookshelfLibraryEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
     def available(self) -> bool:
         """Unavailable if the library is gone from the server."""
         return super().available and self.library is not None
+
+
+def listened_recently(user: UserData) -> bool:
+    """Whether this account has listened to anything lately.
+
+    Audiobookshelf servers accumulate accounts. Entities for people who stopped
+    listening years ago are created but disabled, so they can be switched on
+    without a restart if anyone wants them.
+    """
+    if user.session is not None:
+        return True
+    if user.last_listened is None:
+        return False
+    return datetime.now(UTC) - user.last_listened < timedelta(days=USER_ENABLE_DAYS)
 
 
 class AudiobookshelfUserEntity(CoordinatorEntity[AudiobookshelfCoordinator]):

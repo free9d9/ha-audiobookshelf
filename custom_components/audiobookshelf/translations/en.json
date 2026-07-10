@@ -78,6 +78,9 @@
     },
     "scan_failed": {
       "message": "Could not start the library scan: {error}"
+    },
+    "need_series_or_item": {
+      "message": "Pass either a series or an item_id, not both and not neither."
     }
   },
   "issues": {
@@ -123,6 +126,24 @@
           "description": "Seek to the saved position after playback starts. Turn off to start the track from the beginning."
         }
       }
+    },
+    "remove_progress": {
+      "name": "Remove progress",
+      "description": "Delete a linked user's saved progress on one item, or on every book in a series. This cannot be undone.",
+      "fields": {
+        "user": {
+          "name": "Audiobookshelf user",
+          "description": "Whose progress to delete. Defaults to the Home Assistant account that invoked this action, if it is mapped, or to the only linked user."
+        },
+        "series": {
+          "name": "Series",
+          "description": "Delete progress on every book in this series. Matched on the series name exactly, ignoring case."
+        },
+        "item_id": {
+          "name": "Item ID",
+          "description": "Delete progress on a single library item instead of a series."
+        }
+      }
     }
   },
   "entity": {
@@ -142,8 +163,32 @@
       "listening_now": {
         "name": "Listening now"
       },
-      "users_online": {
+      "open_sessions": {
         "name": "Open sessions"
+      },
+      "users": {
+        "name": "Users"
+      },
+      "libraries": {
+        "name": "Libraries"
+      },
+      "listening_today": {
+        "name": "Listening today"
+      },
+      "listening_week": {
+        "name": "Listening this week"
+      },
+      "listening_month": {
+        "name": "Listening this month"
+      },
+      "listening_year": {
+        "name": "Listening this year"
+      },
+      "listening_all_time": {
+        "name": "Listening all time"
+      },
+      "users_online": {
+        "name": "Users online"
       }
     },
     "binary_sensor": {

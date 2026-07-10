@@ -130,7 +130,7 @@ async def async_teardown(hass: HomeAssistant) -> None:
 
 async def _async_continue_listening(hass: HomeAssistant, call: ServiceCall) -> None:
     """Resume a linked user's current book on a media player."""
-    entry = _loaded_entry(hass)
+    entry = loaded_entry(hass)
     coordinator = entry.runtime_data
     linked = entry.options.get(CONF_LINKED_USERS, {})
     if not linked:
@@ -138,7 +138,7 @@ async def _async_continue_listening(hass: HomeAssistant, call: ServiceCall) -> N
             translation_domain=DOMAIN, translation_key="no_linked_users"
         )
 
-    abs_user = _resolve_user(call, linked)
+    abs_user = resolve_user(call, linked)
     entity_id = call.data[ATTR_ENTITY_ID]
 
     target = hass.states.get(entity_id)
@@ -486,7 +486,7 @@ def _track_for_position(
     return first
 
 
-def _resolve_user(call: ServiceCall, linked: dict[str, Any]) -> dict[str, Any]:
+def resolve_user(call: ServiceCall, linked: dict[str, Any]) -> dict[str, Any]:
     """Work out which Audiobookshelf account this call is for.
 
     Explicit `user:` wins. Otherwise fall back to whoever pressed the button --
@@ -521,7 +521,7 @@ def _resolve_user(call: ServiceCall, linked: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _loaded_entry(hass: HomeAssistant) -> Any:
+def loaded_entry(hass: HomeAssistant) -> Any:
     """Return the one loaded Audiobookshelf config entry."""
     for entry in hass.config_entries.async_entries(DOMAIN):
         if getattr(entry, "runtime_data", None) is not None:

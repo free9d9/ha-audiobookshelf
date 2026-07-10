@@ -58,6 +58,49 @@ async def test_users(hass, aioclient_mock) -> None:
     assert await _rest(hass).async_get_users() == [{"id": "u"}]
 
 
+async def test_users_online(hass, aioclient_mock) -> None:
+    """Online means connected, which is a different thing from listening."""
+    aioclient_mock.get(
+        f"{URL}/api/users/online", json={"usersOnline": [{"username": "Alice"}]}
+    )
+    users = await _rest(hass).async_get_users_online()
+    assert users == [{"username": "Alice"}]
+
+
+async def test_users_online_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/users/online", json=[])
+    assert await _rest(hass).async_get_users_online() == []
+
+
+async def test_user_stats(hass, aioclient_mock) -> None:
+    aioclient_mock.get(
+        f"{URL}/api/users/u1/listening-stats", json={"totalTime": 3600, "days": {}}
+    )
+    stats = await _rest(hass).async_get_user_stats("u1")
+    assert stats["totalTime"] == 3600
+
+
+async def test_user_stats_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/users/u1/listening-stats", json=[])
+    assert await _rest(hass).async_get_user_stats("u1") == {}
+
+
+async def test_get_item(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/items/{ITEM}", json={"id": ITEM})
+    assert (await _rest(hass).async_get_item(ITEM))["id"] == ITEM
+
+
+async def test_get_item_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/items/{ITEM}", json=[])
+    assert await _rest(hass).async_get_item(ITEM) == {}
+
+
+async def test_delete_progress(hass, aioclient_mock) -> None:
+    aioclient_mock.delete(f"{URL}/api/me/progress/prog-1", json={})
+    await _rest(hass).async_delete_progress("prog-1")
+    assert aioclient_mock.call_count == 1
+
+
 async def test_scan_library(hass, aioclient_mock) -> None:
     aioclient_mock.post(f"{URL}/api/libraries/l1/scan", json={})
     await _rest(hass).async_scan_library("l1")

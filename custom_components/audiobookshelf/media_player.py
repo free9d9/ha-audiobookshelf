@@ -8,7 +8,7 @@ actual playback, use Music Assistant's Audiobookshelf provider.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import (
@@ -19,9 +19,12 @@ from homeassistant.components.media_player.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import USER_ENABLE_DAYS
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator, UserData
-from .entity import AudiobookshelfUserEntity, async_setup_dynamic_entities
+from .entity import (
+    AudiobookshelfUserEntity,
+    async_setup_dynamic_entities,
+    listened_recently,
+)
 
 PARALLEL_UPDATES = 0
 
@@ -53,7 +56,7 @@ class AudiobookshelfMediaPlayer(AudiobookshelfUserEntity, MediaPlayerEntity):
         super().__init__(coordinator, user, "media_player")
         # A server can have dozens of accounts, most of them dormant. Create them
         # all so they can be switched on, but only enable the recent listeners.
-        self._attr_entity_registry_enabled_default = _listened_recently(user)
+        self._attr_entity_registry_enabled_default = listened_recently(user)
 
     @property
     def state(self) -> MediaPlayerState:
@@ -146,12 +149,3 @@ class AudiobookshelfMediaPlayer(AudiobookshelfUserEntity, MediaPlayerEntity):
         if user is None or user.session is None:
             return None
         return {"device": user.session.device, "session_id": user.session.session_id}
-
-
-def _listened_recently(user: UserData) -> bool:
-    """Whether this account has listened to anything lately."""
-    if user.session is not None:
-        return True
-    if user.last_listened is None:
-        return False
-    return datetime.now(UTC) - user.last_listened < timedelta(days=USER_ENABLE_DAYS)

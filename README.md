@@ -51,6 +51,11 @@ in the last 30 days. The rest are created but disabled - switch them on in the U
 - `sensor.<library>_items`, `_duration`, `_size` - library totals.
 - `button.<library>_scan_library` - trigger a scan.
 
+**Listening statistics**, per user, in hours: `listening_today`, `listening_this_week`,
+`listening_this_month`, `listening_this_year` and `listening_all_time`. Weeks start on
+Monday and every bucket is computed against your local calendar, not the server's. The
+all-time sensor also carries an `hours_by_weekday` breakdown.
+
 **Server**
 
 - `sensor.audiobookshelf_listening_now` - how many people are *actually* listening, with
@@ -58,9 +63,16 @@ in the last 30 days. The rest are created but disabled - switch them on in the U
 - `sensor.audiobookshelf_open_sessions` - raw open-session count. Deliberately separate
   from the above: Audiobookshelf never closes a session when a client stops, so this
   number counts sessions that may be days stale.
+- `sensor.audiobookshelf_users_online` - people with an app or the web UI open. Different
+  again: online is not listening.
+- `sensor.audiobookshelf_users` and `sensor.audiobookshelf_libraries` - counts, with names.
 - `binary_sensor.audiobookshelf_realtime_updates` - whether the live connection is up.
   When it's off, the integration is still working; updates just fall back to the
   five-minute poll.
+
+Those three "how many people" sensors sound alike and are not. `listening_now` is who is
+playing something right now, `open_sessions` is what Audiobookshelf has forgotten to close,
+and `users_online` is who has the app open.
 
 **Events** on the Home Assistant bus: `audiobookshelf_playback_started` and
 `audiobookshelf_playback_stopped`, each carrying `user`, `title`, `author`, `item_id` and
@@ -291,6 +303,44 @@ tap_action:
   data:
     entity_id: media_player.kitchen_speaker
 ```
+
+## Starting a series over
+
+`remove_progress` deletes a linked user's saved position, either on one item or on every
+book in a series. It cannot be undone.
+
+```yaml
+action: audiobookshelf.remove_progress
+data:
+  user: Kid          # optional, resolved from the caller when mapped
+  series: Mistborn   # or item_id: <library item id>
+response_variable: removed
+```
+
+It returns what it deleted, so an automation can report it:
+
+```yaml
+  - action: notify.mobile_app
+    data:
+      message: "Reset {{ removed.count }} books for {{ removed.user }}."
+```
+
+Progress is per-user and only that user's own key may delete it, so the person must be
+linked. Pass either `series` or `item_id`, never both.
+
+## Migrating from wolffshots/hass-audiobookshelf
+
+This integration takes the same `audiobookshelf` domain, so the two cannot be installed
+side by side. It covers everything that one does, plus real-time updates, recently-added
+feeds, per-user media players and listening statistics.
+
+**Your entities will be recreated and their history will not carry over.** The unique ids
+differ, and there is no safe way to claim another integration's entities. Expect to fix up
+dashboards and automations once.
+
+One behavioural note: that integration's `remove_my_progress` action never deleted
+anything. Its filter reads `if metadata.series_name is str`, comparing a string against the
+*type* `str`, which is always false. The equivalent here is `remove_progress`, and it works.
 
 ## What you can do with it
 

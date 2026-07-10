@@ -23,3 +23,21 @@ continue_listening:
       default: true
       selector:
         boolean:
+
+remove_progress:
+  fields:
+    user:
+      required: false
+      example: Brian
+      selector:
+        text:
+    series:
+      required: false
+      example: Mistborn
+      selector:
+        text:
+    item_id:
+      required: false
+      example: 7a46ad79-85af-43c9-9e81-1472909463e0
+      selector:
+        text:

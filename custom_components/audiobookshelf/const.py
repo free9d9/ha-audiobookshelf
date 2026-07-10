@@ -34,6 +34,12 @@ EVENT_PLAYBACK_STOPPED: Final = f"{DOMAIN}_playback_stopped"
 CONF_LINKED_USERS: Final = "linked_users"
 
 SERVICE_CONTINUE_LISTENING: Final = "continue_listening"
+SERVICE_REMOVE_PROGRESS: Final = "remove_progress"
+
+# Listening statistics change only while someone listens, and cost one REST call
+# per user. They get their own slow cadence rather than riding the 30s poll that
+# runs while a session is live.
+STATS_INTERVAL: Final = timedelta(minutes=15)
 
 # Audiobookshelf API keys may be created with an expiry. Warn before one lapses
 # rather than letting the integration die silently at midnight.

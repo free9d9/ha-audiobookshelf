@@ -6,8 +6,9 @@ import base64
 import binascii
 import json
 import logging
+import time
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import aioaudiobookshelf as absapi
@@ -23,6 +24,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import AudiobookshelfRest, AudiobookshelfRestError
 from .const import (
@@ -39,12 +41,30 @@ from .const import (
     SCAN_INTERVAL,
     SCAN_INTERVAL_LISTENING,
     SESSION_FRESH_SECONDS,
+    STATS_INTERVAL,
 )
 from .cover_proxy import signed_cover_url
 
 _LOGGER = logging.getLogger(__name__)
 
 type AudiobookshelfConfigEntry = ConfigEntry["AudiobookshelfCoordinator"]
+
+
+@dataclass(slots=True)
+class ListeningStats:
+    """How long someone has listened, in calendar buckets.
+
+    Audiobookshelf gives a `days` map of ISO date to seconds, plus an all-time
+    `totalTime`. The buckets are computed from that map against Home Assistant's
+    local date, so they line up with the calendar the user is looking at.
+    """
+
+    today: float = 0.0
+    week: float = 0.0
+    month: float = 0.0
+    year: float = 0.0
+    all_time: float = 0.0
+    by_weekday: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -81,6 +101,7 @@ class UserData:
     user_type: str
     session: SessionData | None = None
     last_listened: datetime | None = None
+    stats: ListeningStats | None = None
 
 
 @dataclass(slots=True)
@@ -104,6 +125,9 @@ class AudiobookshelfData:
 
     libraries: dict[str, LibraryData] = field(default_factory=dict)
     users: dict[str, UserData] = field(default_factory=dict)
+    # Users with a live connection to the server. Being online is not the same as
+    # listening: it means an app or the web UI is open.
+    users_online: list[str] = field(default_factory=list)
     connected: bool = False
 
     @property
@@ -156,6 +180,8 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         self._client: AdminClient | None = None
         self._socket: SocketClient | None = None
         self.rest: AudiobookshelfRest | None = None
+        self._stats: dict[str, ListeningStats] = {}
+        self._stats_fetched: float = 0.0
 
     @property
     def connected(self) -> bool:
@@ -361,8 +387,11 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             raw_libraries = await self.rest.async_get_libraries_with_stats()
             raw_users = await self.rest.async_get_users()
             raw_sessions = await self.rest.async_get_open_sessions()
+            raw_online = await self.rest.async_get_users_online()
         except AudiobookshelfRestError as err:
             raise UpdateFailed(str(err)) from err
+
+        await self._async_refresh_stats(raw_users)
 
         sessions: dict[str, SessionData] = {}
         for raw in raw_sessions:
@@ -387,6 +416,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
                 last_listened=_ms_to_dt(
                     (u.get("latestSession") or {}).get("updatedAt")
                 ),
+                stats=self._stats.get(u["id"]),
             )
             for u in raw_users
             if u.get("id")
@@ -414,10 +444,41 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             self._fire_session_events(self.data.users, users)
 
         data = AudiobookshelfData(
-            libraries=libraries, users=users, connected=self.connected
+            libraries=libraries,
+            users=users,
+            users_online=[u.get("username", "") for u in raw_online],
+            connected=self.connected,
         )
         self.update_interval = self._next_interval(data)
         return data
+
+    async def _async_refresh_stats(self, raw_users: list[dict[str, Any]]) -> None:
+        """Refresh listening statistics, on their own slow cadence.
+
+        One REST call per user, so this must not ride the 30-second poll that
+        runs while somebody is listening. Statistics only move when a session
+        syncs, and a quarter of an hour late is nobody's problem.
+
+        One user's statistics failing is not worth failing the whole refresh
+        over: their sensors simply keep the previous value.
+        """
+        assert self.rest is not None
+        now = time.monotonic()
+        if self._stats and now - self._stats_fetched < STATS_INTERVAL.total_seconds():
+            return
+
+        today = dt_util.now().date()
+        for user in raw_users:
+            user_id = user.get("id")
+            if not user_id:
+                continue
+            try:
+                raw = await self.rest.async_get_user_stats(user_id)
+            except AudiobookshelfRestError as err:
+                _LOGGER.debug("Stats unavailable for %s: %s", user.get("username"), err)
+                continue
+            self._stats[user_id] = _parse_stats(raw, today)
+        self._stats_fetched = now
 
     async def _async_recent_items(self, library_id: str) -> list[dict[str, Any]]:
         """Return the library's Recently Added shelf, card-ready.
@@ -506,6 +567,37 @@ def _parse_session(raw: Any) -> SessionData | None:
         updated_at=updated,
         is_podcast=bool(raw.get("episodeId")),
         device=device,
+    )
+
+
+def _parse_stats(raw: dict[str, Any], today: date) -> ListeningStats:
+    """Bucket Audiobookshelf's `days` map into calendar periods.
+
+    `days` maps an ISO date to seconds listened. Boundaries are taken from Home
+    Assistant's local date, which is what the person reading the dashboard means
+    by "today"; the two agree unless the server sits in another timezone.
+    """
+    days: dict[str, Any] = raw.get("days") or {}
+    parsed: list[tuple[date, float]] = []
+    for key, seconds in days.items():
+        try:
+            parsed.append((date.fromisoformat(key), float(seconds)))
+        except (TypeError, ValueError):
+            continue
+
+    # Monday-based week, matching ISO.
+    week_start = today - timedelta(days=today.weekday())
+    return ListeningStats(
+        today=sum(v for d, v in parsed if d == today),
+        week=sum(v for d, v in parsed if d >= week_start),
+        month=sum(
+            v for d, v in parsed if (d.year, d.month) == (today.year, today.month)
+        ),
+        year=sum(v for d, v in parsed if d.year == today.year),
+        # totalTime is all of history. `days` may not reach far enough back to
+        # reproduce it, so it is taken as given rather than summed.
+        all_time=float(raw.get("totalTime") or 0.0),
+        by_weekday={k: float(v) for k, v in (raw.get("dayOfWeek") or {}).items()},
     )
 
 

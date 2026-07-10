@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import json
 import time
 from collections.abc import Generator
@@ -152,6 +153,8 @@ def mock_rest() -> Generator[MagicMock]:
         ]
     )
     rest.async_get_open_sessions = AsyncMock(return_value=[])
+    rest.async_get_users_online = AsyncMock(return_value=[{"username": "Alice"}])
+    rest.async_get_user_stats = AsyncMock(side_effect=_stats_for)
     rest.async_scan_library = AsyncMock()
     rest.async_create_api_key = AsyncMock(
         return_value={"id": "key-1", "api_key": make_api_key()}
@@ -174,6 +177,31 @@ async def init_integration(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     return mock_config_entry
+
+
+def stats_payload(today_h: float = 1.0) -> dict[str, Any]:
+    """A listening-stats response, with a day map spanning the calendar buckets."""
+    now = dt.date.today()
+    days = {
+        now.isoformat(): today_h * 3600,
+        # yesterday, so it lands in this week only if today is not Monday
+        (now - dt.timedelta(days=1)).isoformat(): 3600.0,
+        # first of this month, always inside month and year
+        now.replace(day=1).isoformat(): 7200.0,
+        "not-a-date": 999.0,  # must be skipped, not crash
+    }
+    return {
+        "totalTime": 360000.0,  # 100 h, deliberately more than `days` sums to
+        "today": today_h * 3600,
+        "days": days,
+        "dayOfWeek": {"Monday": 3600.0, "Tuesday": 1800.0},
+        "items": {},
+        "recentSessions": [],
+    }
+
+
+async def _stats_for(user_id: str) -> dict[str, Any]:
+    return stats_payload() if user_id == "u1" else {"totalTime": 0.0, "days": {}}
 
 
 def open_session(

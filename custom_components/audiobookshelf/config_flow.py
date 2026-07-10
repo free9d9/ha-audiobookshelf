@@ -76,6 +76,7 @@ class AudiobookshelfConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the Audiobookshelf config flow."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     @staticmethod
     @callback

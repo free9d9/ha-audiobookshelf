@@ -124,6 +124,34 @@ class AudiobookshelfRest:
         """Trigger a scan of one library."""
         await self._request("POST", f"/api/libraries/{library_id}/scan")
 
+    async def async_get_users_online(self) -> list[dict[str, Any]]:
+        """Users with a live connection to the server.
+
+        Not the same as listening: this is who has the web UI or an app open.
+        """
+        payload = await self._request("GET", "/api/users/online")
+        return payload.get("usersOnline", []) if isinstance(payload, dict) else []
+
+    async def async_get_user_stats(self, user_id: str) -> dict[str, Any]:
+        """Return listening statistics for one user. Admin only.
+
+        `days` maps an ISO date to seconds listened, which is how the calendar
+        buckets are computed. `totalTime` is all of history.
+        """
+        stats = await self._request("GET", f"/api/users/{user_id}/listening-stats")
+        return stats if isinstance(stats, dict) else {}
+
+    # -------------------------------------------------- removing progress
+
+    async def async_get_item(self, item_id: str) -> dict[str, Any]:
+        """One library item, expanded."""
+        item = await self._request("GET", f"/api/items/{item_id}")
+        return item if isinstance(item, dict) else {}
+
+    async def async_delete_progress(self, progress_id: str) -> None:
+        """Delete one media-progress record belonging to this user."""
+        await self._request("DELETE", f"/api/me/progress/{progress_id}")
+
     # --------------------------------------------------------- API key minting
 
     async def async_create_api_key(self, user_id: str, name: str) -> dict[str, Any]:

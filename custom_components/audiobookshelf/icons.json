@@ -20,7 +20,31 @@
         }
       },
       "users_online": {
-        "default": "mdi:account-multiple"
+        "default": "mdi:account-network"
+      },
+      "users": {
+        "default": "mdi:account-group"
+      },
+      "libraries": {
+        "default": "mdi:bookshelf"
+      },
+      "open_sessions": {
+        "default": "mdi:play-box-multiple"
+      },
+      "listening_today": {
+        "default": "mdi:headphones"
+      },
+      "listening_week": {
+        "default": "mdi:calendar-week"
+      },
+      "listening_month": {
+        "default": "mdi:calendar-month"
+      },
+      "listening_year": {
+        "default": "mdi:calendar-star"
+      },
+      "listening_all_time": {
+        "default": "mdi:history"
       }
     },
     "binary_sensor": {
@@ -36,5 +60,9 @@
         "default": "mdi:folder-refresh"
       }
     }
+  },
+  "services": {
+    "continue_listening": "mdi:play",
+    "remove_progress": "mdi:progress-close"
   }
 }
