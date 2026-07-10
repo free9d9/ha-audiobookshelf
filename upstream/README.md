@@ -1,7 +1,7 @@
 # Upstream work this integration depends on
 
 Nothing here is required for the integration to run. Each is a patch to someone
-else's repository, prepared but **not submitted** — that is a decision for the
+else's repository, prepared but **not submitted** - that is a decision for the
 repository owner to make under their own GitHub identity.
 
 ## 1. `music-assistant/aioaudiobookshelf` -- ship `py.typed`  [SUBMITTED]
@@ -28,7 +28,7 @@ Verified by running their mypy config over their provider before and after.
 `mypy --strict` still passes here with their real types visible.
 
 
-## 2. `music-assistant/aioaudiobookshelf` — bootstrap the socket from an API key
+## 2. `music-assistant/aioaudiobookshelf` - bootstrap the socket from an API key
 
 **Why:** `SocketClient` emits `auth` with whatever token it is given. Audiobookshelf
 rejects API keys on the Socket.IO handshake (`auth_failed: Invalid token`), so a
@@ -38,7 +38,7 @@ caller holding only an API key cannot open a socket.
 emit the `token` from that response instead. Verified working against 2.35.1.
 This integration currently does the exchange itself.
 
-## 3. `music-assistant/aioaudiobookshelf` — `sort` and `desc` on `get_library_items`
+## 3. `music-assistant/aioaudiobookshelf` - `sort` and `desc` on `get_library_items`
 
 **Why:** there is no way to ask for a library's items newest-first. We use
 `get_library_personalized_view()` and take the `recently-added` shelf instead,
@@ -46,7 +46,7 @@ which works but is a roundabout way to sort a list.
 
 **Change:** pass `sort` and `desc` through to `/api/libraries/{id}/items`.
 
-## 4. `music-assistant/aioaudiobookshelf` — a `user_stream_update` callback
+## 4. `music-assistant/aioaudiobookshelf` - a `user_stream_update` callback
 
 **Why:** `SocketClient` has no hook for `user_stream_update`, which is the only
 admin-visible signal that someone started or stopped playing. We register a

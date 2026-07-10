@@ -20,7 +20,7 @@ server. Treat a Home Assistant backup as you would treat those keys.
    their key on the server and removes it from Home Assistant.
 
 Diagnostics redact both, along with every user id. If you paste diagnostics into an issue,
-nothing sensitive goes with it — but read it first anyway.
+nothing sensitive goes with it - but read it first anyway.
 
 ## Design notes that are security-relevant
 

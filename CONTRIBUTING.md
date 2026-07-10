@@ -56,7 +56,7 @@ playing a real book on a real speaker, and neither would have been caught by rea
 code:
 
 1. A player does not advertise `SEEK` until it has media loaded, so checking capabilities
-   before `play_media` silently skipped the seek — and the sync then wrote the start of the
+   before `play_media` silently skipped the seek - and the sync then wrote the start of the
    track over the listener's saved position.
 2. A stopped player reports no position at all, and `0.0` was written to the server.
 
@@ -66,7 +66,7 @@ keeps whatever it had.
 
 ## Commit messages
 
-Explain *why*, not *what* — the diff already says what. If a decision turned on something
+Explain *why*, not *what* - the diff already says what. If a decision turned on something
 surprising about the Audiobookshelf API, put it in the message; the next person will
 otherwise assume it was arbitrary and "fix" it.
 

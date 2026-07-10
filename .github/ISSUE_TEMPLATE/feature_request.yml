@@ -24,7 +24,7 @@ body:
     attributes:
       label: Does Audiobookshelf expose this?
       description: >
-        If you know the endpoint or socket event, say so — it saves a lot of digging.
+        If you know the endpoint or socket event, say so - it saves a lot of digging.
         Its API docs are wrong in several places, so a link to the server source is worth
         more than a link to the docs.
 

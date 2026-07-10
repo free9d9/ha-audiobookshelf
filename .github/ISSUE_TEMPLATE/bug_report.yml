@@ -6,8 +6,10 @@ body:
     attributes:
       value: |
         Before you file: a few behaviours look like bugs but are Audiobookshelf working as
-        designed. Please check [Known limitations](../../#known-limitations) first —
-        especially **offline playback being invisible** and **open sessions never closing**.
+        designed. Please check
+        [Known limitations](https://github.com/free9d9/ha-audiobookshelf#known-limitations)
+        first, especially **offline playback being invisible** and
+        **open sessions never closing**.
 
   - type: textarea
     id: what

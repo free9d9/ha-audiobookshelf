@@ -9,7 +9,7 @@
 [![Validate](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml/badge.svg)](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml)
 [![HACS](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/free9d9/ha-audiobookshelf?display_name=tag&sort=semver)](https://github.com/free9d9/ha-audiobookshelf/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.6%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/free9d9/ha-audiobookshelf)](LICENSE)
 [![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](#development)
 
@@ -18,7 +18,7 @@
 ---
 
 [Audiobookshelf](https://www.audiobookshelf.org/) has always emitted a live event stream
-over Socket.IO — the same one its own web UI listens to. Nothing consumed it. This
+over Socket.IO - the same one its own web UI listens to. Nothing consumed it. This
 integration does, so your entities change the moment your library does, rather than
 whenever the next poll happens to land. A REST poll runs behind it purely as a safety net.
 
@@ -27,38 +27,38 @@ tenth of a second. Add a book and the poster wall updates without a refresh.
 
 **What it is not:** Audiobookshelf has no remote-control API, so nothing here pretends to
 pause your phone. For casting and playback, use
-[Music Assistant](https://www.music-assistant.io/music-providers/audiobookshelf/) — this
+[Music Assistant](https://www.music-assistant.io/music-providers/audiobookshelf/) - this
 integration deliberately does not compete with it. What it *does* add is the part nobody
 else has: real-time state, a recently-added feed, and a resume action that syncs progress
 back to Audiobookshelf **as the right person**.
 
 ## What you get
 
-**Per user** — `media_player.audiobookshelf_<user>`
+**Per user** - `media_player.audiobookshelf_<user>`
 
 What each person is listening to right now: title, author, cover art, duration and
 position. Home Assistant extrapolates the position while it plays.
 
 Servers accumulate accounts, so a player is only *enabled* for people who have listened
-in the last 30 days. The rest are created but disabled — switch them on in the UI.
+in the last 30 days. The rest are created but disabled - switch them on in the UI.
 
 **Per library**
 
-- `sensor.<library>_recently_added` — when the newest item landed, with the full
+- `sensor.<library>_recently_added` - when the newest item landed, with the full
   recently-added feed in a `data` attribute. The format matches
   [upcoming-media-card](https://github.com/custom-cards/upcoming-media-card), so poster-wall
   cards can render it directly.
-- `sensor.<library>_items`, `_duration`, `_size` — library totals.
-- `button.<library>_scan_library` — trigger a scan.
+- `sensor.<library>_items`, `_duration`, `_size` - library totals.
+- `button.<library>_scan_library` - trigger a scan.
 
 **Server**
 
-- `sensor.audiobookshelf_listening_now` — how many people are *actually* listening, with
+- `sensor.audiobookshelf_listening_now` - how many people are *actually* listening, with
   who and what in its attributes.
-- `sensor.audiobookshelf_open_sessions` — raw open-session count. Deliberately separate
+- `sensor.audiobookshelf_open_sessions` - raw open-session count. Deliberately separate
   from the above: Audiobookshelf never closes a session when a client stops, so this
   number counts sessions that may be days stale.
-- `binary_sensor.audiobookshelf_realtime_updates` — whether the live connection is up.
+- `binary_sensor.audiobookshelf_realtime_updates` - whether the live connection is up.
   When it's off, the integration is still working; updates just fall back to the
   five-minute poll.
 
@@ -73,7 +73,7 @@ without a token ever reaching the browser.
 
 ## Resuming a book on a speaker
 
-Audiobookshelf cannot be told to play anything — it has no remote-control API. What it
+Audiobookshelf cannot be told to play anything - it has no remote-control API. What it
 can do is open a session and expose the audio over a URL. The `continue_listening` action
 hands that URL to a speaker Home Assistant already controls, seeks to where you left off,
 and syncs your position back afterwards.
@@ -90,20 +90,20 @@ data:
 
 Every progress route on the Audiobookshelf server is `/me/progress/...`. **There is no
 admin route to write another user's progress.** So a single shared "Home Assistant"
-account would quietly build up its own bookmarks and never touch yours — playing your book
+account would quietly build up its own bookmarks and never touch yours - playing your book
 on the kitchen speaker would leave your phone none the wiser, and two people in a
 household would clobber each other.
 
 Instead, go to **Configure** on the integration and link the people you want. The admin
-key you already gave it mints one Audiobookshelf API key per person — **no passwords are
-collected** — and revokes them again when you unlink. Playback then acts as that person,
+key you already gave it mints one Audiobookshelf API key per person - **no passwords are
+collected** - and revokes them again when you unlink. Playback then acts as that person,
 and their progress syncs correctly.
 
 Each linked user can optionally be mapped to a Home Assistant account. Home Assistant puts
 the invoking user's id on a service call's context, so with a mapping, a dashboard button
 resumes *your* book without naming you. Automations run without a user context, so pass
-`user:` explicitly there. Entity state is global in Home Assistant — a `media_player`
-cannot show one thing to you and another to your partner — so this per-person behaviour
+`user:` explicitly there. Entity state is global in Home Assistant - a `media_player`
+cannot show one thing to you and another to your partner - so this per-person behaviour
 applies to actions only.
 
 ### Seeking, and why progress is sometimes not written back
@@ -113,7 +113,7 @@ because both were found the hard way on real hardware:
 
 - **A player does not advertise `SEEK` until it has media loaded.** An idle Chromecast
   reports no seek capability and gains it a second after the stream starts. So the
-  capability is checked *after* `play_media`, once the player reaches `playing` — never
+  capability is checked *after* `play_media`, once the player reaches `playing` - never
   before.
 - **If the speaker still cannot seek, progress is deliberately not written back.**
   Playback starts at the top of the track, which is a mild annoyance; syncing that
@@ -130,7 +130,7 @@ Progress is only ever written from a position the speaker actually reported.
 ### HACS
 
 1. HACS → ⋮ → **Custom repositories**
-2. Repository: `https://github.com/free9d9/ha-audiobookshelf` — Category: **Integration**
+2. Repository: `https://github.com/free9d9/ha-audiobookshelf` - Category: **Integration**
 3. Install **Audiobookshelf**, then restart Home Assistant.
 4. **Settings → Devices & Services → Add Integration → Audiobookshelf.**
 
@@ -183,7 +183,7 @@ server, shape how this works:
 2. **A close looks exactly like a start.** `closeSession()` emits `user_stream_update`
    *before* `removeSession()`, so the payload still contains the session that is
    disappearing. `removeSession()` emits nothing, and `user_session_closed` only reaches
-   the session's own owner — never an admin. We tell them apart by session id, then
+   the session's own owner - never an admin. We tell them apart by session id, then
    confirm against `/api/sessions/open`, which is authoritative.
 3. **Admins never see other people's position ticks.** `user_item_progress_updated` is
    emitted to the owning user's sockets only. Position therefore comes from the last known
@@ -192,7 +192,7 @@ server, shape how this works:
 ## Known limitations
 
 - **No playback control.** Audiobookshelf has no remote-control API for its playing
-  clients — you cannot pause someone's phone from Home Assistant. For playback, use
+  clients - you cannot pause someone's phone from Home Assistant. For playback, use
   [Music Assistant](https://www.music-assistant.io/music-providers/audiobookshelf/), which
   has a proper Audiobookshelf provider. This integration deliberately does not compete
   with it.
@@ -209,19 +209,19 @@ server, shape how this works:
   ```
 
 - **Offline (downloaded) playback is invisible.** When the mobile app plays a book it has
-  downloaded, it never opens a session on the server — it plays locally and posts the
+  downloaded, it never opens a session on the server - it plays locally and posts the
   result to `/api/session/local` afterwards. Verified against 2.35.1: that sync creates no
   open session and emits no `user_stream_update`, not even to an admin. So a listener who
   downloads everything shows as `idle`, `listening_now` does not count them, and no
   `playback_started` / `playback_stopped` events fire.
 
   Their **progress still arrives** whenever the app syncs, so `continue_listening` resumes
-  correctly — at the last position the phone managed to upload. If the phone is still
+  correctly - at the last position the phone managed to upload. If the phone is still
   offline, you resume behind.
 
   This is Audiobookshelf's design, not something the integration can paper over. The one
   signal that *is* emitted is `user_item_progress_updated`, and it goes only to that user's
-  own sockets — never to an admin.
+  own sockets - never to an admin.
 - **Talkback speakers are refused.** Security-camera speakers and doorbell chimes register
   as `media_player` entities with `device_class: speaker`, indistinguishable from a real
   speaker by name or class. They give themselves away by offering `PLAY_MEDIA` and `STOP`
@@ -240,7 +240,7 @@ Assistant entities, so the built-in cards render them properly. That is the poin
 modelling playback as a real `media_player` rather than inventing attributes.
 
 **Now playing.** The stock media control card gives you cover art, title, author, and a
-progress bar that advances on its own — Home Assistant extrapolates it from
+progress bar that advances on its own - Home Assistant extrapolates it from
 `media_position_updated_at`. Artwork is proxied and signed by Home Assistant, so nothing
 reaches for your Audiobookshelf host.
 
@@ -295,7 +295,7 @@ tap_action:
 ## What you can do with it
 
 **Know when the bedtime story ends.** The single most-requested Audiobookshelf automation.
-No polling, no template sensors — the event fires the moment the session closes.
+No polling, no template sensors - the event fires the moment the session closes.
 
 ```yaml
 triggers:
@@ -322,7 +322,7 @@ actions:
     data: { brightness_pct: 15 }
 ```
 
-**Resume your book in the kitchen.** A dashboard button, with no user named — it resumes
+**Resume your book in the kitchen.** A dashboard button, with no user named - it resumes
 whoever pressed it, provided their Home Assistant account is mapped.
 
 ```yaml
@@ -366,7 +366,7 @@ reload the page. If it persists, check the entry state under Settings → Device
 The Socket.IO connection is down and the integration has fallen back to polling every five
 minutes. Everything still works, just slower. Usually the server restarted; it reconnects
 on its own. If it stays off, check that nothing between Home Assistant and Audiobookshelf
-is stripping WebSocket upgrades — a reverse proxy is the usual culprit.
+is stripping WebSocket upgrades - a reverse proxy is the usual culprit.
 
 **Setup fails with "Audiobookshelf rejected that API key."**
 The key was revoked, expired, or belongs to a deleted user. Create a new one under
@@ -377,8 +377,8 @@ Settings → API Keys, leaving the expiry blank, then reconfigure.
 A key belonging to a normal user can only see that user.
 
 **`continue_listening` says a speaker "cannot be paused."**
-That entity is a talkback or notification speaker — a security camera's speaker, most
-likely — not something to play an audiobook on. This is deliberate. Pick a real speaker.
+That entity is a talkback or notification speaker - a security camera's speaker, most
+likely - not something to play an audiobook on. This is deliberate. Pick a real speaker.
 
 **A book resumed from the beginning instead of where I left off.**
 The target speaker does not support seeking. Progress was *not* written back, so nothing
@@ -387,7 +387,7 @@ all can.
 
 **Progress is not syncing back to Audiobookshelf.**
 Either the user is not linked (Configure → link them), or the speaker cannot seek (see
-above), or nothing is playing — position only syncs while the player reports `playing`.
+above), or nothing is playing - position only syncs while the player reports `playing`.
 
 **`sensor.audiobookshelf_open_sessions` shows listeners who are not listening.**
 That is Audiobookshelf, not this integration: it never closes a session when a client
@@ -404,7 +404,7 @@ server rather than in Home Assistant:
 
 1. **The per-user API keys it minted.** Unlink users *before* deleting the entry and they
    are revoked for you. If you have already deleted it, remove them by hand in
-   Audiobookshelf under Settings → API Keys — they are named `Home Assistant (<user>)`.
+   Audiobookshelf under Settings → API Keys - they are named `Home Assistant (<user>)`.
 2. **The admin API key you created during setup.** Delete that one too, in the same place.
 
 Then remove the integration from HACS.
@@ -430,16 +430,16 @@ Tracked in [`quality_scale.yaml`](custom_components/audiobookshelf/quality_scale
 | Tier | Status |
 | --- | --- |
 | Bronze | Complete except `brands` (icon PR pending) |
-| Silver | Complete — 99% coverage, reauth, graceful unavailability |
-| Gold | Complete — diagnostics, devices, repairs, reconfigure, translations. `discovery` is *exempt*: Audiobookshelf advertises nothing over mDNS |
-| Platinum | `async-dependency` and `inject-websession` done. `strict-typing` blocked only on [`aioaudiobookshelf`](https://github.com/music-assistant/aioaudiobookshelf) shipping a `py.typed` marker — our own code passes `mypy --strict` and ships one |
+| Silver | Complete - 99% coverage, reauth, graceful unavailability |
+| Gold | Complete - diagnostics, devices, repairs, reconfigure, translations. `discovery` is *exempt*: Audiobookshelf advertises nothing over mDNS |
+| Platinum | `async-dependency` and `inject-websession` done. `strict-typing` blocked only on [`aioaudiobookshelf`](https://github.com/music-assistant/aioaudiobookshelf) shipping a `py.typed` marker - our own code passes `mypy --strict` and ships one |
 
 ## Credits
 
-- [wolffshots/hass-audiobookshelf](https://github.com/wolffshots/hass-audiobookshelf) —
+- [wolffshots/hass-audiobookshelf](https://github.com/wolffshots/hass-audiobookshelf),
   the first Audiobookshelf integration for Home Assistant, and the source of the server
   and per-library sensor design.
-- [Tech-Morph](https://github.com/wolffshots/hass-audiobookshelf/pull/127) — prior art on
+- [Tech-Morph](https://github.com/wolffshots/hass-audiobookshelf/pull/127) - prior art on
   a media_player and per-user progress coordinator.
-- [`aioaudiobookshelf`](https://pypi.org/project/aioaudiobookshelf/) — the async client
+- [`aioaudiobookshelf`](https://pypi.org/project/aioaudiobookshelf/) - the async client
   library this is built on, also used by Music Assistant.

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Audiobookshelf",
-        "description": "In Audiobookshelf, go to Settings → API Keys and create a new key. Leave the expiry blank so the key never expires — an expiring key will eventually stop the integration until you enter a new one.",
+        "description": "In Audiobookshelf, go to Settings → API Keys and create a new key. Leave the expiry blank so the key never expires - an expiring key will eventually stop the integration until you enter a new one.",
         "data": {
           "url": "Server URL",
           "api_key": "API key"
