@@ -1,11 +1,36 @@
+<div align="center">
+
+<img src="brands/custom_integrations/audiobookshelf/icon.png" width="120" alt="Audiobookshelf">
+
 # Audiobookshelf for Home Assistant
 
-A real-time [Audiobookshelf](https://www.audiobookshelf.org/) integration for Home Assistant.
+**Real-time.** Your library changes, and Home Assistant knows immediately.
 
-Audiobookshelf already emits a live event stream over Socket.IO — the same one its own
-web UI listens to. This integration consumes it, so your entities change the moment your
-library does, instead of whenever the next poll happens to land. A REST poll runs every
-five minutes purely as a safety net.
+[![Validate](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml/badge.svg)](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz/)
+[![Release](https://img.shields.io/github/v/release/free9d9/ha-audiobookshelf?display_name=tag&sort=semver)](https://github.com/free9d9/ha-audiobookshelf/releases)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
+[![License](https://img.shields.io/github/license/free9d9/ha-audiobookshelf)](LICENSE)
+[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](#development)
+
+</div>
+
+---
+
+[Audiobookshelf](https://www.audiobookshelf.org/) has always emitted a live event stream
+over Socket.IO — the same one its own web UI listens to. Nothing consumed it. This
+integration does, so your entities change the moment your library does, rather than
+whenever the next poll happens to land. A REST poll runs behind it purely as a safety net.
+
+Press play on your phone and the media player in Home Assistant turns `playing` in about a
+tenth of a second. Add a book and the poster wall updates without a refresh.
+
+**What it is not:** Audiobookshelf has no remote-control API, so nothing here pretends to
+pause your phone. For casting and playback, use
+[Music Assistant](https://www.music-assistant.io/music-providers/audiobookshelf/) — this
+integration deliberately does not compete with it. What it *does* add is the part nobody
+else has: real-time state, a recently-added feed, and a resume action that syncs progress
+back to Audiobookshelf **as the right person**.
 
 ## What you get
 
@@ -104,9 +129,12 @@ Progress is only ever written from a position the speaker actually reported.
 
 ### HACS
 
-1. HACS → ⋮ → **Custom repositories** → add this repo, category **Integration**.
-2. Install **Audiobookshelf**, then restart Home Assistant.
-3. **Settings → Devices & Services → Add Integration → Audiobookshelf.**
+1. HACS → ⋮ → **Custom repositories**
+2. Repository: `https://github.com/free9d9/ha-audiobookshelf` — Category: **Integration**
+3. Install **Audiobookshelf**, then restart Home Assistant.
+4. **Settings → Devices & Services → Add Integration → Audiobookshelf.**
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=audiobookshelf)
 
 ### Manual
 
@@ -380,6 +408,31 @@ server rather than in Home Assistant:
 2. **The admin API key you created during setup.** Delete that one too, in the same place.
 
 Then remove the integration from HACS.
+
+## Development
+
+```bash
+pip install -r requirements-test.txt
+pytest                                        # 141 tests, 99% coverage
+mypy custom_components/audiobookshelf --strict
+ruff check custom_components tests
+```
+
+Home Assistant requires Python 3.14 and cannot be imported on Windows. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the container recipe, and for the list of places
+where Audiobookshelf's API documentation disagrees with the server.
+
+### Quality scale
+
+Tracked in [`quality_scale.yaml`](custom_components/audiobookshelf/quality_scale.yaml):
+**47 rules done, 5 exempt, 2 outstanding.**
+
+| Tier | Status |
+| --- | --- |
+| Bronze | Complete except `brands` (icon PR pending) |
+| Silver | Complete — 99% coverage, reauth, graceful unavailability |
+| Gold | Complete — diagnostics, devices, repairs, reconfigure, translations. `discovery` is *exempt*: Audiobookshelf advertises nothing over mDNS |
+| Platinum | `async-dependency` and `inject-websession` done. `strict-typing` blocked only on [`aioaudiobookshelf`](https://github.com/music-assistant/aioaudiobookshelf) shipping a `py.typed` marker — our own code passes `mypy --strict` and ships one |
 
 ## Credits
 

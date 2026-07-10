@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Playback, casting, whole-home audio
+    url: https://www.music-assistant.io/music-providers/audiobookshelf/
+    about: Music Assistant owns playback. This integration does not compete with it.
+  - name: Audiobookshelf server itself
+    url: https://github.com/advplyr/audiobookshelf/issues
+    about: Bugs in the server, its API, or its apps belong upstream.
+  - name: Security vulnerability
+    url: https://github.com/free9d9/ha-audiobookshelf/security/advisories/new
+    about: Please report privately rather than in a public issue.

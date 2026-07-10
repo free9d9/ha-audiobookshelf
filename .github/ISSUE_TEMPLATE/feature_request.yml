@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest something this integration should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two things worth knowing before you write:
+
+        - **Playback belongs to [Music Assistant](https://www.music-assistant.io/music-providers/audiobookshelf/).**
+          It has a proper Audiobookshelf provider and this integration does not compete with it.
+        - **Audiobookshelf has no remote-control API.** Nothing here can pause someone's phone.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem, not the solution. What would you automate, or want to see?
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Does Audiobookshelf expose this?
+      description: >
+        If you know the endpoint or socket event, say so — it saves a lot of digging.
+        Its API docs are wrong in several places, so a link to the server source is worth
+        more than a link to the docs.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried instead?

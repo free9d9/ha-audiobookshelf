@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "deps"
+    # pytest-homeassistant-custom-component pins the Home Assistant release this
+    # integration targets. Bumping it is a deliberate act, not a chore.
+    ignore:
+      - dependency-name: pytest-homeassistant-custom-component

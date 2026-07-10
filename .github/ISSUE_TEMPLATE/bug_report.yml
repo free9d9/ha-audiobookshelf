@@ -1,0 +1,70 @@
+name: Bug report
+description: Something does not work as described
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you file: a few behaviours look like bugs but are Audiobookshelf working as
+        designed. Please check [Known limitations](../../#known-limitations) first —
+        especially **offline playback being invisible** and **open sessions never closing**.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How can it be reproduced?
+      placeholder: |
+        1. Link a user
+        2. Call audiobookshelf.continue_listening on ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: abs_version
+    attributes:
+      label: Audiobookshelf version
+      description: Settings → About, or GET /status
+      placeholder: "2.35.1"
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.7.1"
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      placeholder: "0.4.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >
+        Settings → Devices & Services → Audiobookshelf → ⋮ → Download diagnostics.
+        API keys and user ids are redacted automatically, but do read it before pasting.
+      render: json
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Enable debug logging for `custom_components.audiobookshelf` if you can.
+      render: shell
