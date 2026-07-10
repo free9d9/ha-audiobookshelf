@@ -4,15 +4,29 @@ Nothing here is required for the integration to run. Each is a patch to someone
 else's repository, prepared but **not submitted** — that is a decision for the
 repository owner to make under their own GitHub identity.
 
-## 1. `music-assistant/aioaudiobookshelf` — ship `py.typed`
+## 1. `music-assistant/aioaudiobookshelf` -- ship `py.typed`  [SUBMITTED]
 
-**Why:** Home Assistant's Platinum `strict-typing` rule requires the backing
-library to be PEP-561 compliant. Our own code passes `mypy --strict` and ships
-`py.typed`; this is the only thing standing between the integration and Platinum.
+**PR:** https://github.com/music-assistant/aioaudiobookshelf/pull/14
 
-**Change:** add an empty `aioaudiobookshelf/py.typed`, and include it in the
-package data. The library is already fully annotated — the marker is all that is
-missing.
+**Why:** Home Assistant's Platinum `strict-typing` rule requires the backing library to be
+PEP-561 compliant. Our own code passes `mypy --strict` and ships `py.typed`; this is the
+only thing standing between the integration and Platinum.
+
+**Change:** an empty `aioaudiobookshelf/py.typed`, plus the `Typing :: Typed` classifier.
+Their `pyproject.toml` already declared the marker in `package-data`; the file itself was
+never added, so nothing shipped. The library is fully annotated already.
+
+**Known downstream impact, disclosed on the PR:** once the marker ships, mypy stops
+treating the library as `Any`. Music Assistant's own Audiobookshelf provider then reports
+8 errors, none of them runtime bugs: 5 are re-export visibility (`no_implicit_reexport`
+with no `__all__` in the library), and 2 are pre-existing artifacts in their own code.
+Verified by running their mypy config over their provider before and after.
+
+**When it lands:** bump the pin in `custom_components/audiobookshelf/manifest.json` and
+`requirements-test.txt`, then delete the `aioaudiobookshelf.*` entry from
+`[tool.mypy.overrides]` in `pyproject.toml`. Verified against a locally built wheel that
+`mypy --strict` still passes here with their real types visible.
+
 
 ## 2. `music-assistant/aioaudiobookshelf` — bootstrap the socket from an API key
 

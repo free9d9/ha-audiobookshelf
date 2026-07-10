@@ -143,8 +143,9 @@ rules:
   strict-typing:
     status: todo
     comment: >-
-      Our own code passes `mypy --strict` with no errors and ships py.typed.
-      The rule additionally requires the backing library to be PEP-561
-      compliant, and aioaudiobookshelf does not yet ship a py.typed marker.
-      Upstream PR to music-assistant/aioaudiobookshelf pending; nothing else
-      blocks Platinum.
+      Our own code passes `mypy --strict` with no errors and ships py.typed. The
+      rule additionally requires the backing library to be PEP-561 compliant, and
+      aioaudiobookshelf ships no py.typed marker. Submitted upstream as
+      music-assistant/aioaudiobookshelf#14. Verified against a locally built wheel
+      that `mypy --strict` still passes here with their real types visible, so
+      merging that PR is the only thing left before Platinum.
