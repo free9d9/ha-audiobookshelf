@@ -180,6 +180,20 @@ server, shape how this works:
         - sensor.e_books_recently_added
   ```
 
+- **Offline (downloaded) playback is invisible.** When the mobile app plays a book it has
+  downloaded, it never opens a session on the server — it plays locally and posts the
+  result to `/api/session/local` afterwards. Verified against 2.35.1: that sync creates no
+  open session and emits no `user_stream_update`, not even to an admin. So a listener who
+  downloads everything shows as `idle`, `listening_now` does not count them, and no
+  `playback_started` / `playback_stopped` events fire.
+
+  Their **progress still arrives** whenever the app syncs, so `continue_listening` resumes
+  correctly — at the last position the phone managed to upload. If the phone is still
+  offline, you resume behind.
+
+  This is Audiobookshelf's design, not something the integration can paper over. The one
+  signal that *is* emitted is `user_item_progress_updated`, and it goes only to that user's
+  own sockets — never to an admin.
 - **Talkback speakers are refused.** Security-camera speakers and doorbell chimes register
   as `media_player` entities with `device_class: speaker`, indistinguishable from a real
   speaker by name or class. They give themselves away by offering `PLAY_MEDIA` and `STOP`
