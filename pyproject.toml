@@ -34,11 +34,6 @@ python_version = "3.14"
 strict = true
 warn_unreachable = true
 disallow_any_generics = true
-# socketio ships no py.typed marker, so its types cannot be seen from here.
-# The aioaudiobookshelf-plus dependency is fully typed, so it needs no override.
-[[tool.mypy.overrides]]
-module = ["socketio.*"]
-ignore_missing_imports = true
 
 # Home Assistant does not declare __all__ in its packages, so strict mode cannot
 # see re-exported names such as HomeAssistantView. This relaxes the check for
