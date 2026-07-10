@@ -53,5 +53,5 @@ jobs:
           python-version: "3.14"
       - run: pip install -r requirements-test.txt
       - run: pytest --cov-fail-under=95
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         continue-on-error: true
