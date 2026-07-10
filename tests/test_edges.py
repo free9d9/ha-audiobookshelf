@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from aioaudiobookshelf.exceptions import LoginError
+from aioaudiobookshelf_plus.exceptions import LoginError
 from aiohttp import ClientError
 from homeassistant.components.media_player import MediaPlayerState
 from homeassistant.config_entries import ConfigEntryState

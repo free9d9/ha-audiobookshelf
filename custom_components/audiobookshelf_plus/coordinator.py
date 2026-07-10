@@ -11,10 +11,10 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-import aioaudiobookshelf as absapi
-from aioaudiobookshelf.client import AdminClient, SocketClient
-from aioaudiobookshelf.client.session_configuration import SessionConfiguration
-from aioaudiobookshelf.exceptions import LoginError, TokenIsMissingError
+import aioaudiobookshelf_plus as absapi
+from aioaudiobookshelf_plus.client import AdminClient, SocketClient
+from aioaudiobookshelf_plus.client.session_configuration import SessionConfiguration
+from aioaudiobookshelf_plus.exceptions import LoginError, TokenIsMissingError
 from aiohttp import ClientError, ClientSession
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_URL

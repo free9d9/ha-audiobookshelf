@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from aioaudiobookshelf.exceptions import LoginError
+from aioaudiobookshelf_plus.exceptions import LoginError
 from aiohttp import ClientError
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_URL

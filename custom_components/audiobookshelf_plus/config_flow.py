@@ -7,11 +7,11 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
 
-import aioaudiobookshelf as absapi
+import aioaudiobookshelf_plus as absapi
 import aiohttp
 import voluptuous as vol
-from aioaudiobookshelf.client.session_configuration import SessionConfiguration
-from aioaudiobookshelf.exceptions import LoginError, TokenIsMissingError
+from aioaudiobookshelf_plus.client.session_configuration import SessionConfiguration
+from aioaudiobookshelf_plus.exceptions import LoginError, TokenIsMissingError
 from aiohttp import ClientError
 from homeassistant.config_entries import (
     ConfigEntry,

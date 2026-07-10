@@ -142,11 +142,10 @@ rules:
   async-dependency: done
   inject-websession: done
   strict-typing:
-    status: todo
+    status: done
     comment: >-
       Our own code passes `mypy --strict` with no errors and ships py.typed. The
-      rule additionally requires the backing library to be PEP-561 compliant, and
-      aioaudiobookshelf ships no py.typed marker. Submitted upstream as
-      music-assistant/aioaudiobookshelf#14. Verified against a locally built wheel
-      that `mypy --strict` still passes here with their real types visible, so
-      merging that PR is the only thing left before Platinum.
+      backing dependency is now `aioaudiobookshelf-plus`, which is fully typed and
+      PEP-561 compliant (ships a py.typed marker), so its real types are visible to
+      `mypy --strict` with no `ignore_missing_imports` override. The rule is
+      satisfied.

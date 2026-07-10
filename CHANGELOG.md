@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0]
+
+### Changed
+
+- Switched the backing library from `aioaudiobookshelf` to `aioaudiobookshelf-plus`
+  (version 0.2.0), a fully typed, PEP-561 compliant fork that ships a `py.typed`
+  marker. Because the dependency's real types are now visible to `mypy --strict`,
+  the integration no longer needs an `ignore_missing_imports` override for it, which
+  satisfies the Platinum `strict-typing` quality-scale rule. This is a drop-in
+  re-point with no behavioral change: the same client factories, schema classes,
+  and client methods are used, only under the new import namespace.
+
 ## [0.8.0]
 
 ### Changed
