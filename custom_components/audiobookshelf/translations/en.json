@@ -144,6 +144,20 @@
           "description": "Delete progress on a single library item instead of a series."
         }
       }
+    },
+    "get_year_in_review": {
+      "name": "Get year in review",
+      "description": "Returns a listener's summary for a calendar year: books finished, hours, top authors, genres, narrator and busiest month. Requires a linked user.",
+      "fields": {
+        "user": {
+          "name": "User",
+          "description": "The linked Audiobookshelf account. Defaults to whoever called the action, or the only linked user."
+        },
+        "year": {
+          "name": "Year",
+          "description": "The calendar year to summarise. Defaults to this year."
+        }
+      }
     }
   },
   "entity": {

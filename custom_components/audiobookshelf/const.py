@@ -48,6 +48,11 @@ CONF_LINKED_USERS: Final = "linked_users"
 
 SERVICE_CONTINUE_LISTENING: Final = "continue_listening"
 SERVICE_REMOVE_PROGRESS: Final = "remove_progress"
+SERVICE_YEAR_IN_REVIEW: Final = "get_year_in_review"
+
+# Audiobookshelf rejects anything outside this range with a 400 (MeController).
+MIN_STATS_YEAR: Final = 2000
+MAX_STATS_YEAR: Final = 9999
 
 # Listening statistics change only while someone listens, and cost one REST call
 # per user. They get their own slow cadence rather than riding the 30s poll that

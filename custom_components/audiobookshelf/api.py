@@ -143,6 +143,16 @@ class AudiobookshelfRest:
         )
         return int(payload.get("total", 0)) if isinstance(payload, dict) else 0
 
+    async def async_get_year_in_review(self, year: int) -> dict[str, Any]:
+        """Return the key owner's listening summary for a calendar year.
+
+        `/api/me/...` means the account that owns the key, so this must be called
+        with a linked user's key. An admin key answers 200 with zeroes, which is
+        the admin's own (empty) year rather than an error.
+        """
+        payload = await self._request("GET", f"/api/me/stats/year/{year}")
+        return payload if isinstance(payload, dict) else {}
+
     async def async_get_users_online(self) -> list[dict[str, Any]]:
         """Users with a live connection to the server.
 

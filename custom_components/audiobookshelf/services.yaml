@@ -41,3 +41,19 @@ remove_progress:
       example: 7a46ad79-85af-43c9-9e81-1472909463e0
       selector:
         text:
+
+get_year_in_review:
+  fields:
+    user:
+      required: false
+      example: Brian
+      selector:
+        text:
+    year:
+      required: false
+      example: 2026
+      selector:
+        number:
+          min: 2000
+          max: 9999
+          mode: box

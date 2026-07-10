@@ -75,6 +75,9 @@
   },
   "services": {
     "continue_listening": "mdi:play",
-    "remove_progress": "mdi:progress-close"
+    "remove_progress": "mdi:progress-close",
+    "get_year_in_review": {
+      "service": "mdi:calendar-star"
+    }
   }
 }

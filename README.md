@@ -337,6 +337,38 @@ It returns what it deleted, so an automation can report it:
       message: "Reset {{ removed.count }} books for {{ removed.user }}."
 ```
 
+## Your year in books
+
+`get_year_in_review` returns a listener's summary for a calendar year: books finished,
+hours, top authors, top genres, top narrator, busiest month and the longest book they got
+through. It is an action rather than a set of sensors, because this changes once a year
+and a server full of accounts does not need six frozen entities each.
+
+```yaml
+action: audiobookshelf.get_year_in_review
+data:
+  user: Brian    # optional, resolved from the caller when mapped
+  year: 2026     # optional, defaults to this year
+response_variable: wrapped
+```
+
+Every duration comes back in hours, already rounded, so nothing has to divide by 3600 in a
+template:
+
+```yaml
+  - action: notify.mobile_app
+    data:
+      message: >-
+        {{ wrapped.user }} finished {{ wrapped.books_finished }} books in
+        {{ wrapped.hours }} hours. Most of it was {{ wrapped.top_authors[0].name }},
+        and {{ wrapped.top_month.name }} was the big month.
+```
+
+This reads `/api/me/...`, so it runs as a **linked user**, the same as `remove_progress`.
+Audiobookshelf offers no way to ask for someone else's year. Note that if you query it
+yourself, the `mostListenedMonth.month` it returns counts from zero, so `4` means May.
+This integration returns a `month` counting from one, and a `name` alongside it.
+
 Progress is per-user and only that user's own key may delete it, so the person must be
 linked. Pass either `series` or `item_id`, never both.
 

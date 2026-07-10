@@ -13,6 +13,7 @@ from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
 from .cover_proxy import AudiobookshelfCoverView
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
+from .year_in_review import async_setup_year_in_review
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -29,6 +30,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register actions, which must exist whether or not an entry is loaded."""
     await async_setup_services(hass)
     await async_setup_remove_progress(hass)
+    await async_setup_year_in_review(hass)
     return True
 
 
