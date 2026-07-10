@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -155,7 +156,7 @@ async def test_stats_failure_for_one_user_is_survivable(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    assert mock_config_entry.state.recoverable is False or True  # loaded
+    assert mock_config_entry.state is ConfigEntryState.LOADED
     assert hass.states.get("sensor.audiobookshelf_users").state == "2"
     state = hass.states.get("sensor.audiobookshelf_alice_listening_today")
     assert state.state == "unknown"

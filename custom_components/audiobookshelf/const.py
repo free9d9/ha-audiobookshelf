@@ -26,6 +26,19 @@ USER_ENABLE_DAYS: Final = 30
 # Events fired on the Home Assistant bus.
 EVENT_PLAYBACK_STARTED: Final = f"{DOMAIN}_playback_started"
 EVENT_PLAYBACK_STOPPED: Final = f"{DOMAIN}_playback_stopped"
+EVENT_SCAN_COMPLETED: Final = f"{DOMAIN}_scan_completed"
+
+# Audiobookshelf has no version-check endpoint of its own, so the only place to
+# ask is GitHub. This is the integration's one outbound call; everything else
+# talks to the local server. It is checked daily and never fails the refresh.
+RELEASE_URL: Final = (
+    "https://api.github.com/repos/advplyr/audiobookshelf/releases/latest"
+)
+RELEASE_CHECK_INTERVAL: Final = timedelta(days=1)
+
+# Library scans arrive as generic tasks. There is no scan_start/scan_complete
+# event despite what the docs' contents page implies.
+TASK_LIBRARY_SCAN: Final = "library-scan"
 
 # Linked users: {abs_user_id: {username, api_key, key_id, ha_user_id}}.
 # Audiobookshelf only lets an account write its own progress, so resuming a book

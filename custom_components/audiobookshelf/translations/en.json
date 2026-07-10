@@ -189,16 +189,30 @@
       },
       "users_online": {
         "name": "Users online"
+      },
+      "issues": {
+        "name": "Issues"
+      },
+      "last_scan": {
+        "name": "Last scan"
       }
     },
     "binary_sensor": {
       "realtime": {
         "name": "Realtime updates"
+      },
+      "scanning": {
+        "name": "Scanning"
       }
     },
     "button": {
       "scan_library": {
         "name": "Scan library"
+      }
+    },
+    "update": {
+      "server": {
+        "name": "Server"
       }
     }
   }

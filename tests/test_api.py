@@ -219,3 +219,42 @@ async def test_non_json_response(hass, aioclient_mock) -> None:
     aioclient_mock.post(f"{URL}/api/libraries/l1/scan", text="OK")
     await _rest(hass).async_scan_library("l1")
     assert aioclient_mock.call_count == 1
+
+
+async def test_get_status_is_unauthenticated_and_outside_api(hass, aioclient_mock):
+    """`/status`, not `/api/status`. It is how we learn the server's version."""
+    aioclient_mock.get(f"{URL}/status", json={"serverVersion": "2.35.1"})
+    status = await _rest(hass).async_get_status()
+    assert status["serverVersion"] == "2.35.1"
+
+
+async def test_get_status_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/status", json=["nope"])
+    assert await _rest(hass).async_get_status() == {}
+
+
+async def test_issue_count_asks_for_one_item(hass, aioclient_mock) -> None:
+    """`?include=filterdata` answers the same question in a hundred kilobytes.
+
+    The `issues` filter runs the same `isMissing OR isInvalid` query and returns
+    a total in a couple of hundred bytes, so ask for a single item and read it.
+    """
+    aioclient_mock.get(
+        f"{URL}/api/libraries/lib-1/items",
+        json={"total": 2, "results": [{"id": "broken"}]},
+    )
+    assert await _rest(hass).async_get_issue_count("lib-1") == 2
+
+    query = aioclient_mock.mock_calls[0][1].query
+    assert query["filter"] == "issues"
+    assert query["limit"] == "1"
+
+
+async def test_issue_count_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/libraries/lib-1/items", json=[])
+    assert await _rest(hass).async_get_issue_count("lib-1") == 0
+
+
+async def test_issue_count_without_a_total(hass, aioclient_mock) -> None:
+    aioclient_mock.get(f"{URL}/api/libraries/lib-1/items", json={"results": []})
+    assert await _rest(hass).async_get_issue_count("lib-1") == 0

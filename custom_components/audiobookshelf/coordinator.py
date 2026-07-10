@@ -31,6 +31,7 @@ from .const import (
     DOMAIN,
     EVENT_PLAYBACK_STARTED,
     EVENT_PLAYBACK_STOPPED,
+    EVENT_SCAN_COMPLETED,
     ISSUE_KEY_EXPIRING,
     KEY_EXPIRY_WARN_DAYS,
     NEW_ITEM_DAYS,
@@ -38,12 +39,15 @@ from .const import (
     PARSE_DICT_EBOOK,
     RECENT_LIMIT,
     REFRESH_COOLDOWN_SECONDS,
+    RELEASE_CHECK_INTERVAL,
     SCAN_INTERVAL,
     SCAN_INTERVAL_LISTENING,
     SESSION_FRESH_SECONDS,
     STATS_INTERVAL,
+    TASK_LIBRARY_SCAN,
 )
 from .cover_proxy import signed_cover_url
+from .release import ReleaseInfo, async_get_latest_release
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,6 +119,9 @@ class LibraryData:
     total_items: int = 0
     total_duration: float = 0.0
     total_size: int = 0
+    # Items whose files are missing from disk or cannot be read.
+    issues: int = 0
+    last_scan: datetime | None = None
     recent: list[dict[str, Any]] = field(default_factory=list)
     newest_added: datetime | None = None
 
@@ -128,6 +135,10 @@ class AudiobookshelfData:
     # Users with a live connection to the server. Being online is not the same as
     # listening: it means an app or the web UI is open.
     users_online: list[str] = field(default_factory=list)
+    server_version: str = ""
+    latest_release: ReleaseInfo | None = None
+    # Library ids currently being scanned, from the generic task events.
+    scanning: set[str] = field(default_factory=set)
     connected: bool = False
 
     @property
@@ -182,6 +193,9 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         self.rest: AudiobookshelfRest | None = None
         self._stats: dict[str, ListeningStats] = {}
         self._stats_fetched: float = 0.0
+        self._release: ReleaseInfo | None = None
+        self._release_checked: float = 0.0
+        self._scanning: set[str] = set()
 
     @property
     def connected(self) -> bool:
@@ -274,6 +288,10 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         # one directly off the underlying socketio client. Register before
         # init_client() connects.
         self._socket.client.on("user_stream_update", self._on_stream_update)
+        # Library scans surface as generic tasks. There is no scan_start or
+        # scan_complete event, despite what the docs' contents page implies.
+        self._socket.client.on("task_started", self._on_task_started)
+        self._socket.client.on("task_finished", self._on_task_finished)
         await self._socket.init_client()
 
     async def async_shutdown(self) -> None:
@@ -373,6 +391,40 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
                     },
                 )
 
+    async def _on_task_started(self, payload: Any) -> None:
+        """Note that a background task began. We only care about library scans."""
+        library_id = _scan_library_id(payload)
+        if library_id is None or self.data is None:
+            return
+        self._scanning.add(library_id)
+        self.async_set_updated_data(replace(self.data, scanning=set(self._scanning)))
+
+    async def _on_task_finished(self, payload: Any) -> None:
+        """Announce what a finished library scan found."""
+        library_id = _scan_library_id(payload)
+        if library_id is None or self.data is None:
+            return
+        self._scanning.discard(library_id)
+
+        data = payload.get("data") or {}
+        results = data.get("scanResults") or {}
+        self.hass.bus.async_fire(
+            EVENT_SCAN_COMPLETED,
+            {
+                "library": data.get("libraryName", ""),
+                "library_id": library_id,
+                "failed": bool(payload.get("isFailed")),
+                "added": int(results.get("added", 0)),
+                "updated": int(results.get("updated", 0)),
+                "missing": int(results.get("missing", 0)),
+                "elapsed_ms": int(results.get("elapsed", 0)),
+                "summary": results.get("text", ""),
+            },
+        )
+        self.async_set_updated_data(replace(self.data, scanning=set(self._scanning)))
+        # A scan changes item counts and issue counts, so pick those up too.
+        await self.async_request_refresh()
+
     def _next_interval(self, data: AudiobookshelfData) -> timedelta:
         """Poll faster while anything is playing, so we notice a pause."""
         return SCAN_INTERVAL_LISTENING if data.listening_now else SCAN_INTERVAL
@@ -388,10 +440,12 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             raw_users = await self.rest.async_get_users()
             raw_sessions = await self.rest.async_get_open_sessions()
             raw_online = await self.rest.async_get_users_online()
+            status = await self.rest.async_get_status()
         except AudiobookshelfRestError as err:
             raise UpdateFailed(str(err)) from err
 
         await self._async_refresh_stats(raw_users)
+        await self._async_refresh_release()
 
         sessions: dict[str, SessionData] = {}
         for raw in raw_sessions:
@@ -427,6 +481,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             lib_id = raw["id"]
             stats = raw.get("stats") or {}
             recent = await self._async_recent_items(lib_id)
+            issues = await self.rest.async_get_issue_count(lib_id)
             libraries[lib_id] = LibraryData(
                 library_id=lib_id,
                 name=raw.get("name", lib_id),
@@ -435,6 +490,8 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
                 total_items=int(stats.get("totalItems", 0)),
                 total_duration=float(stats.get("totalDuration", 0.0)),
                 total_size=int(stats.get("totalSize", 0)),
+                issues=issues,
+                last_scan=_ms_to_dt(raw.get("lastScan")),
                 recent=recent,
                 newest_added=_newest(recent),
             )
@@ -447,6 +504,9 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             libraries=libraries,
             users=users,
             users_online=[u.get("username", "") for u in raw_online],
+            server_version=str(status.get("serverVersion") or ""),
+            latest_release=self._release,
+            scanning=set(self._scanning),
             connected=self.connected,
         )
         self.update_interval = self._next_interval(data)
@@ -479,6 +539,23 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
                 continue
             self._stats[user_id] = _parse_stats(raw, today)
         self._stats_fetched = now
+
+    async def _async_refresh_release(self) -> None:
+        """Ask GitHub about new releases, at most once a day.
+
+        The only outbound call in the integration. A failure keeps whatever we
+        knew before and never fails the refresh.
+        """
+        now = time.monotonic()
+        if (
+            self._release is not None
+            and now - self._release_checked < RELEASE_CHECK_INTERVAL.total_seconds()
+        ):
+            return
+        session = async_get_clientsession(self.hass)
+        if (release := await async_get_latest_release(session)) is not None:
+            self._release = release
+        self._release_checked = now
 
     async def _async_recent_items(self, library_id: str) -> list[dict[str, Any]]:
         """Return the library's Recently Added shelf, card-ready.
@@ -570,6 +647,18 @@ def _parse_session(raw: Any) -> SessionData | None:
     )
 
 
+def _scan_library_id(payload: Any) -> str | None:
+    """Return the library a task belongs to, if that task is a library scan.
+
+    Audiobookshelf routes every background job through the same two events, so
+    the action has to be checked rather than the event name.
+    """
+    if not isinstance(payload, dict) or payload.get("action") != TASK_LIBRARY_SCAN:
+        return None
+    library_id = (payload.get("data") or {}).get("libraryId")
+    return str(library_id) if library_id else None
+
+
 def _parse_stats(raw: dict[str, Any], today: date) -> ListeningStats:
     """Bucket Audiobookshelf's `days` map into calendar periods.
 
@@ -617,7 +706,7 @@ def _api_key_expiry(api_key: str) -> datetime | None:
         return None
     try:
         return datetime.fromtimestamp(int(exp), tz=UTC)
-    except (TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OSError, OverflowError):
         return None
 
 
@@ -627,7 +716,7 @@ def _ms_to_dt(value: Any) -> datetime | None:
         return None
     try:
         return datetime.fromtimestamp(int(value) / 1000, tz=UTC)
-    except (TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OSError, OverflowError):
         return None
 
 

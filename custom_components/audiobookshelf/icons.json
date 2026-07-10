@@ -45,6 +45,12 @@
       },
       "listening_all_time": {
         "default": "mdi:history"
+      },
+      "issues": {
+        "default": "mdi:book-alert"
+      },
+      "last_scan": {
+        "default": "mdi:clock-check-outline"
       }
     },
     "binary_sensor": {
@@ -52,6 +58,12 @@
         "default": "mdi:lightning-bolt",
         "state": {
           "off": "mdi:lightning-bolt-outline"
+        }
+      },
+      "scanning": {
+        "default": "mdi:magnify-scan",
+        "state": {
+          "off": "mdi:magnify"
         }
       }
     },

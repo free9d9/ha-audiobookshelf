@@ -49,6 +49,11 @@ in the last 30 days. The rest are created but disabled - switch them on in the U
   [upcoming-media-card](https://github.com/custom-cards/upcoming-media-card), so poster-wall
   cards can render it directly.
 - `sensor.<library>_items`, `_duration`, `_size` - library totals.
+- `sensor.<library>_issues` - items whose files have gone missing or unreadable. Anything
+  above zero is a book Audiobookshelf still lists but can no longer play, which is usually
+  a rename or an unmounted share. Better to hear about it now than at bedtime.
+- `sensor.<library>_last_scan` - when the library was last scanned.
+- `binary_sensor.<library>_scanning` - on while a scan is running.
 - `button.<library>_scan_library` - trigger a scan.
 
 **Listening statistics**, per user, in hours: `listening_today`, `listening_this_week`,
@@ -69,15 +74,22 @@ all-time sensor also carries an `hours_by_weekday` breakdown.
 - `binary_sensor.audiobookshelf_realtime_updates` - whether the live connection is up.
   When it's off, the integration is still working; updates just fall back to the
   five-minute poll.
+- `update.audiobookshelf_server` - the version you run against the newest release, with
+  the full changelog. There is no install button on purpose: pulling a new image and
+  migrating its database is your call, not something an integration should do behind your
+  back. This is also the only request the integration makes outside your network, once a
+  day, to GitHub. Disable the entity and it stops.
 
 Those three "how many people" sensors sound alike and are not. `listening_now` is who is
 playing something right now, `open_sessions` is what Audiobookshelf has forgotten to close,
 and `users_online` is who has the app open.
 
-**Events** on the Home Assistant bus: `audiobookshelf_playback_started` and
-`audiobookshelf_playback_stopped`, each carrying `user`, `title`, `author`, `item_id` and
+**Events** on the Home Assistant bus. `audiobookshelf_playback_started` and
+`audiobookshelf_playback_stopped` each carry `user`, `title`, `author`, `item_id` and
 `device`. This is what makes "tell me when the kid's bedtime story ends" a three-line
-automation.
+automation. `audiobookshelf_scan_completed` fires when a library finishes scanning,
+carrying `library`, `library_id`, `failed`, `added`, `updated`, `missing`, `elapsed_ms`
+and a human-readable `summary`.
 
 Cover art is proxied through Home Assistant and served over signed URLs, so posters load
 from outside your LAN and over HTTPS without exposing the Audiobookshelf host, and
@@ -402,6 +414,22 @@ actions:
 
 **Rebuild the library after a file drop.** `button.<library>_scan_library`, triggered by
 whatever moves files onto your server.
+
+**Tell me only when a scan found something wrong.** A rename or an unmounted share turns
+books into dead entries, silently.
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: audiobookshelf_scan_completed
+conditions:
+  - condition: template
+    value_template: "{{ trigger.event.data.missing > 0 or trigger.event.data.failed }}"
+actions:
+  - action: notify.mobile_app
+    data:
+      message: "{{ trigger.event.data.library }}: {{ trigger.event.data.summary }}"
+```
 
 **Poster walls.** The `data` attribute drops straight into
 [upcoming-media-card](https://github.com/custom-cards/upcoming-media-card).

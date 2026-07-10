@@ -19,6 +19,7 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
     Platform.MEDIA_PLAYER,
     Platform.SENSOR,
+    Platform.UPDATE,
 ]
 
 _VIEW_REGISTERED = f"{DOMAIN}_cover_view"

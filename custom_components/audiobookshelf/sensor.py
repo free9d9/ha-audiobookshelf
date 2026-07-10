@@ -59,6 +59,8 @@ async def async_setup_entry(
             AudiobookshelfItemsSensor(coordinator, library),
             AudiobookshelfDurationSensor(coordinator, library),
             AudiobookshelfSizeSensor(coordinator, library),
+            AudiobookshelfIssuesSensor(coordinator, library),
+            AudiobookshelfLastScanSensor(coordinator, library),
         ]
 
     def _user_entities(user: UserData) -> list[SensorEntity]:
@@ -370,3 +372,48 @@ class AudiobookshelfSizeSensor(AudiobookshelfLibraryEntity, SensorEntity):
         """Gigabytes on disk."""
         library = self.library
         return round(library.total_size / 1_000_000_000, 2) if library else None
+
+
+class AudiobookshelfIssuesSensor(AudiobookshelfLibraryEntity, SensorEntity):
+    """Items in this library whose files are missing or unreadable.
+
+    Anything above zero means a book that Audiobookshelf still lists but can no
+    longer play. A rename or an unmounted share moves this off zero, which is a
+    far better alarm than discovering it at bedtime.
+    """
+
+    _attr_translation_key = "issues"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: AudiobookshelfCoordinator, library: LibraryData
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, library, "issues")
+
+    @property
+    def native_value(self) -> int | None:
+        """Count of missing or invalid items."""
+        library = self.library
+        return library.issues if library else None
+
+
+class AudiobookshelfLastScanSensor(AudiobookshelfLibraryEntity, SensorEntity):
+    """When this library was last scanned."""
+
+    _attr_translation_key = "last_scan"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: AudiobookshelfCoordinator, library: LibraryData
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, library, "last_scan")
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Timestamp of the last scan, or None if it has never been scanned."""
+        library = self.library
+        return library.last_scan if library else None

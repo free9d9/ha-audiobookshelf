@@ -15,6 +15,7 @@ from homeassistant.const import CONF_API_KEY, CONF_URL
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
+from custom_components.audiobookshelf.release import ReleaseInfo
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -57,11 +58,21 @@ def mock_config_entry() -> MockConfigEntry:
     )
 
 
+LATEST_RELEASE = ReleaseInfo(
+    version="2.36.0",
+    url="https://github.com/advplyr/audiobookshelf/releases/tag/v2.36.0",
+    # Deliberately over 255 characters, the cap on `release_summary`.
+    notes="## Highlights\n\nA very long changelog." + "." * 300,
+)
+SERVER_VERSION = "2.35.1"
+
+
 def _library(library_id: str, name: str, media_type: str = "book") -> dict[str, Any]:
     return {
         "id": library_id,
         "name": name,
         "mediaType": media_type,
+        "lastScan": NOW_MS,
         "stats": {
             "totalItems": 10,
             "totalDuration": 36000.0,
@@ -154,6 +165,8 @@ def mock_rest() -> Generator[MagicMock]:
     )
     rest.async_get_open_sessions = AsyncMock(return_value=[])
     rest.async_get_users_online = AsyncMock(return_value=[{"username": "Alice"}])
+    rest.async_get_status = AsyncMock(return_value={"serverVersion": SERVER_VERSION})
+    rest.async_get_issue_count = AsyncMock(return_value=0)
     rest.async_get_user_stats = AsyncMock(side_effect=_stats_for)
     rest.async_scan_library = AsyncMock()
     rest.async_create_api_key = AsyncMock(
@@ -166,6 +179,16 @@ def mock_rest() -> Generator[MagicMock]:
         return_value=rest,
     ):
         yield rest
+
+
+@pytest.fixture(autouse=True)
+def mock_release() -> Generator[AsyncMock]:
+    """Never let the test suite call GitHub."""
+    with patch(
+        "custom_components.audiobookshelf.coordinator.async_get_latest_release",
+        AsyncMock(return_value=LATEST_RELEASE),
+    ) as mock:
+        yield mock
 
 
 @pytest.fixture

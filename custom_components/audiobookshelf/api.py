@@ -124,6 +124,25 @@ class AudiobookshelfRest:
         """Trigger a scan of one library."""
         await self._request("POST", f"/api/libraries/{library_id}/scan")
 
+    async def async_get_status(self) -> dict[str, Any]:
+        """Server status. Unauthenticated, and outside /api."""
+        status = await self._request("GET", "/status")
+        return status if isinstance(status, dict) else {}
+
+    async def async_get_issue_count(self, library_id: str) -> int:
+        """Count items whose files are missing or invalid.
+
+        `?include=filterdata` also reports this, but returns a hundred kilobytes
+        of facet data to do it. The `issues` filter is the same query
+        (`isMissing OR isInvalid`) and answers in a couple of hundred bytes.
+        """
+        payload = await self._request(
+            "GET",
+            f"/api/libraries/{library_id}/items",
+            params={"filter": "issues", "limit": 1, "minified": 1},
+        )
+        return int(payload.get("total", 0)) if isinstance(payload, dict) else 0
+
     async def async_get_users_online(self) -> list[dict[str, Any]]:
         """Users with a live connection to the server.
 

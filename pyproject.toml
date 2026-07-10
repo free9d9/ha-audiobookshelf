@@ -13,6 +13,9 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+# Every reachable branch is provoked by a test. A drop below 100 means a new
+# path shipped untested, which is how the seek and close bugs got in.
+fail_under = 100
 
 [tool.ruff]
 target-version = "py313"
