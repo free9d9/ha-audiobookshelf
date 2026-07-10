@@ -33,11 +33,11 @@ rules:
       pauses, so a pause can only be noticed by polling.
   common-modules: done
   brands:
-    status: todo
+    status: done
     comment: >-
-      Assets are prepared in brands/custom_integrations/audiobookshelf/
-      (256x256 and 512x512, square, transparent). The PR to
-      home-assistant/brands has not been opened yet.
+      custom_integrations/audiobookshelf already exists in home-assistant/brands
+      and is served from brands.home-assistant.io, so this domain's icon
+      resolves without a further PR.
   dependency-transparency:
     status: done
     comment: aioaudiobookshelf is Apache-2.0, on PyPI, asyncio-native.

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="brands/custom_integrations/audiobookshelf/icon.png" width="120" alt="Audiobookshelf">
+<img src="https://brands.home-assistant.io/audiobookshelf/icon.png" width="120" alt="Audiobookshelf">
 
 # Audiobookshelf for Home Assistant
 

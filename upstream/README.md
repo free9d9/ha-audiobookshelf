@@ -45,9 +45,3 @@ handler directly on the underlying `socketio.AsyncClient`.
 > `user_stream_update` *before* `removeSession()`, so the payload of a close still
 > contains the session that is disappearing. A close is indistinguishable from a
 > start except by session id.
-
-## 5. `home-assistant/brands` — icon assets
-
-Assets are ready in `../brands/custom_integrations/audiobookshelf/`. Copy that
-directory into a fork of `home-assistant/brands` and open a PR. This is the last
-Bronze rule.
