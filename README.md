@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="https://brands.home-assistant.io/audiobookshelf/icon.png" width="120" alt="Audiobookshelf">
-
-# Audiobookshelf for Home Assistant
+# Audiobookshelf Plus for Home Assistant
 
 **Real-time.** Your library changes, and Home Assistant knows immediately.
 
@@ -34,7 +32,7 @@ back to Audiobookshelf **as the right person**.
 
 ## What you get
 
-**Per user** - `media_player.audiobookshelf_<user>`
+**Per user** - `media_player.audiobookshelf_plus_<user>`
 
 What each person is listening to right now: title, author, cover art, duration and
 position. Home Assistant extrapolates the position while it plays.
@@ -63,18 +61,18 @@ all-time sensor also carries an `hours_by_weekday` breakdown.
 
 **Server**
 
-- `sensor.audiobookshelf_listening_now` - how many people are *actually* listening, with
+- `sensor.audiobookshelf_plus_listening_now` - how many people are *actually* listening, with
   who and what in its attributes.
-- `sensor.audiobookshelf_open_sessions` - raw open-session count. Deliberately separate
+- `sensor.audiobookshelf_plus_open_sessions` - raw open-session count. Deliberately separate
   from the above: Audiobookshelf never closes a session when a client stops, so this
   number counts sessions that may be days stale.
-- `sensor.audiobookshelf_users_online` - people with an app or the web UI open. Different
+- `sensor.audiobookshelf_plus_users_online` - people with an app or the web UI open. Different
   again: online is not listening.
-- `sensor.audiobookshelf_users` and `sensor.audiobookshelf_libraries` - counts, with names.
-- `binary_sensor.audiobookshelf_realtime_updates` - whether the live connection is up.
+- `sensor.audiobookshelf_plus_users` and `sensor.audiobookshelf_plus_libraries` - counts, with names.
+- `binary_sensor.audiobookshelf_plus_realtime_updates` - whether the live connection is up.
   When it's off, the integration is still working; updates just fall back to the
   five-minute poll.
-- `update.audiobookshelf_server` - the version you run against the newest release, with
+- `update.audiobookshelf_plus_server` - the version you run against the newest release, with
   the full changelog. There is no install button on purpose: pulling a new image and
   migrating its database is your call, not something an integration should do behind your
   back. This is also the only request the integration makes outside your network, once a
@@ -84,10 +82,10 @@ Those three "how many people" sensors sound alike and are not. `listening_now` i
 playing something right now, `open_sessions` is what Audiobookshelf has forgotten to close,
 and `users_online` is who has the app open.
 
-**Events** on the Home Assistant bus. `audiobookshelf_playback_started` and
-`audiobookshelf_playback_stopped` each carry `user`, `title`, `author`, `item_id` and
+**Events** on the Home Assistant bus. `audiobookshelf_plus_playback_started` and
+`audiobookshelf_plus_playback_stopped` each carry `user`, `title`, `author`, `item_id` and
 `device`. This is what makes "tell me when the kid's bedtime story ends" a three-line
-automation. `audiobookshelf_scan_completed` fires when a library finishes scanning,
+automation. `audiobookshelf_plus_scan_completed` fires when a library finishes scanning,
 carrying `library`, `library_id`, `failed`, `added`, `updated`, `missing`, `elapsed_ms`
 and a human-readable `summary`.
 
@@ -103,7 +101,7 @@ hands that URL to a speaker Home Assistant already controls, seeks to where you 
 and syncs your position back afterwards.
 
 ```yaml
-action: audiobookshelf.continue_listening
+action: audiobookshelf_plus.continue_listening
 data:
   entity_id: media_player.kitchen_speaker
   user: Brian        # optional
@@ -158,11 +156,11 @@ Progress is only ever written from a position the speaker actually reported.
 3. Install **Audiobookshelf**, then restart Home Assistant.
 4. **Settings → Devices & Services → Add Integration → Audiobookshelf.**
 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=audiobookshelf)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=audiobookshelf_plus)
 
 ### Manual
 
-Copy `custom_components/audiobookshelf/` into your `config/custom_components/` and restart.
+Copy `custom_components/audiobookshelf_plus/` into your `config/custom_components/` and restart.
 
 ## Setup
 
@@ -191,7 +189,7 @@ Push, with a poll as backstop:
 - While someone is listening the fallback poll tightens to 30 seconds, because
   Audiobookshelf emits **nothing at all when a client pauses**.
 - If the socket drops, the REST poll keeps things fresh and
-  `binary_sensor.audiobookshelf_realtime_updates` turns off.
+  `binary_sensor.audiobookshelf_plus_realtime_updates` turns off.
 
 Measured on a 2.35.1 server: a metadata change reaches Home Assistant in ~5.8 s; pressing
 play shows up in ~0.1 s; stopping resolves in ~6.9 s.
@@ -270,7 +268,7 @@ reaches for your Audiobookshelf host.
 
 ```yaml
 type: media-control
-entity: media_player.audiobookshelf_brian
+entity: media_player.audiobookshelf_plus_brian
 ```
 
 **Who is listening.** Remember that `open_sessions` counts sessions Audiobookshelf never
@@ -280,10 +278,10 @@ closed; `listening_now` counts people actually listening.
 type: entities
 title: Audiobookshelf
 entities:
-  - sensor.audiobookshelf_listening_now
-  - entity: sensor.audiobookshelf_open_sessions
+  - sensor.audiobookshelf_plus_listening_now
+  - entity: sensor.audiobookshelf_plus_open_sessions
     name: Open sessions (incl. stale)
-  - binary_sensor.audiobookshelf_realtime_updates
+  - binary_sensor.audiobookshelf_plus_realtime_updates
   - sensor.audiobooks_items
   - sensor.audiobooks_duration
   - sensor.audiobooks_size
@@ -311,7 +309,7 @@ name: Continue my book
 icon: mdi:play
 tap_action:
   action: perform-action
-  perform_action: audiobookshelf.continue_listening
+  perform_action: audiobookshelf_plus.continue_listening
   data:
     entity_id: media_player.kitchen_speaker
 ```
@@ -322,7 +320,7 @@ tap_action:
 book in a series. It cannot be undone.
 
 ```yaml
-action: audiobookshelf.remove_progress
+action: audiobookshelf_plus.remove_progress
 data:
   user: Kid          # optional, resolved from the caller when mapped
   series: Mistborn   # or item_id: <library item id>
@@ -345,7 +343,7 @@ through. It is an action rather than a set of sensors, because this changes once
 and a server full of accounts does not need six frozen entities each.
 
 ```yaml
-action: audiobookshelf.get_year_in_review
+action: audiobookshelf_plus.get_year_in_review
 data:
   user: Brian    # optional, resolved from the caller when mapped
   year: 2026     # optional, defaults to this year
@@ -374,9 +372,10 @@ linked. Pass either `series` or `item_id`, never both.
 
 ## Migrating from wolffshots/hass-audiobookshelf
 
-This integration takes the same `audiobookshelf` domain, so the two cannot be installed
-side by side. It covers everything that one does, plus real-time updates, recently-added
-feeds, per-user media players and listening statistics.
+This integration uses the `audiobookshelf_plus` domain, while wolffshots/hass-audiobookshelf
+uses `audiobookshelf`, so the two can be installed side by side. It covers everything that
+one does, plus real-time updates, recently-added feeds, per-user media players and listening
+statistics.
 
 **Your entities will be recreated and their history will not carry over.** The unique ids
 differ, and there is no safe way to claim another integration's entities. Expect to fix up
@@ -394,7 +393,7 @@ No polling, no template sensors - the event fires the moment the session closes.
 ```yaml
 triggers:
   - trigger: event
-    event_type: audiobookshelf_playback_stopped
+    event_type: audiobookshelf_plus_playback_stopped
 conditions:
   - condition: template
     value_template: "{{ trigger.event.data.user == 'Kid' }}"
@@ -409,7 +408,7 @@ pause someone's phone. You can react to them starting:
 ```yaml
 triggers:
   - trigger: event
-    event_type: audiobookshelf_playback_started
+    event_type: audiobookshelf_plus_playback_started
 actions:
   - action: light.turn_on
     target: { entity_id: light.bedroom }
@@ -424,7 +423,7 @@ type: button
 name: Continue my book
 tap_action:
   action: perform-action
-  perform_action: audiobookshelf.continue_listening
+  perform_action: audiobookshelf_plus.continue_listening
   data:
     entity_id: media_player.kitchen_speaker
 ```
@@ -453,7 +452,7 @@ books into dead entries, silently.
 ```yaml
 triggers:
   - trigger: event
-    event_type: audiobookshelf_scan_completed
+    event_type: audiobookshelf_plus_scan_completed
 conditions:
   - condition: template
     value_template: "{{ trigger.event.data.missing > 0 or trigger.event.data.failed }}"
@@ -472,7 +471,7 @@ actions:
 Home Assistant reloads the config entry, and a reload takes a few seconds. Wait, then
 reload the page. If it persists, check the entry state under Settings → Devices & Services.
 
-**`binary_sensor.audiobookshelf_realtime_updates` is off.**
+**`binary_sensor.audiobookshelf_plus_realtime_updates` is off.**
 The Socket.IO connection is down and the integration has fallen back to polling every five
 minutes. Everything still works, just slower. Usually the server restarted; it reconnects
 on its own. If it stays off, check that nothing between Home Assistant and Audiobookshelf
@@ -499,9 +498,9 @@ all can.
 Either the user is not linked (Configure → link them), or the speaker cannot seek (see
 above), or nothing is playing - position only syncs while the player reports `playing`.
 
-**`sensor.audiobookshelf_open_sessions` shows listeners who are not listening.**
+**`sensor.audiobookshelf_plus_open_sessions` shows listeners who are not listening.**
 That is Audiobookshelf, not this integration: it never closes a session when a client
-stops, so sessions linger for days. Use `sensor.audiobookshelf_listening_now`, which
+stops, so sessions linger for days. Use `sensor.audiobookshelf_plus_listening_now`, which
 filters on whether the position was synced recently.
 
 ## Removing the integration
@@ -524,7 +523,7 @@ Then remove the integration from HACS.
 ```bash
 pip install -r requirements-test.txt
 pytest                                        # 141 tests, 99% coverage
-mypy custom_components/audiobookshelf --strict
+mypy custom_components/audiobookshelf_plus --strict
 ruff check custom_components tests
 ```
 
@@ -534,7 +533,7 @@ where Audiobookshelf's API documentation disagrees with the server.
 
 ### Quality scale
 
-Tracked in [`quality_scale.yaml`](custom_components/audiobookshelf/quality_scale.yaml):
+Tracked in [`quality_scale.yaml`](custom_components/audiobookshelf_plus/quality_scale.yaml):
 **47 rules done, 5 exempt, 2 outstanding.**
 
 | Tier | Status |

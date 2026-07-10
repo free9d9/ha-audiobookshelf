@@ -8,13 +8,13 @@ import pytest
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import (
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
+from custom_components.audiobookshelf_plus.const import (
     CONF_LINKED_USERS,
     DOMAIN,
     SERVICE_REMOVE_PROGRESS,
 )
-from custom_components.audiobookshelf.progress import _series_names
+from custom_components.audiobookshelf_plus.progress import _series_names
 
 from .conftest import make_api_key
 
@@ -67,7 +67,7 @@ def user_rest():
     rest.async_get_progress = AsyncMock(return_value={"id": "prog-a"})
     rest.async_delete_progress = AsyncMock()
     with patch(
-        "custom_components.audiobookshelf.progress.AudiobookshelfRest",
+        "custom_components.audiobookshelf_plus.progress.AudiobookshelfRest",
         return_value=rest,
     ):
         yield rest

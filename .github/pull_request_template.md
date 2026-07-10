@@ -10,7 +10,7 @@ what you ran it against and what you saw. Its docs are wrong in several places t
 -->
 
 - [ ] `ruff check custom_components tests` and `ruff format --check`
-- [ ] `mypy custom_components/audiobookshelf --strict`
+- [ ] `mypy custom_components/audiobookshelf_plus --strict`
 - [ ] `pytest --cov-fail-under=95`
 - [ ] Exercised against a real Audiobookshelf server (version: ______)
 

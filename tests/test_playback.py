@@ -15,8 +15,8 @@ from homeassistant.const import ATTR_ENTITY_ID, ATTR_SUPPORTED_FEATURES
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import (
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
+from custom_components.audiobookshelf_plus.const import (
     CONF_LINKED_USERS,
     DOMAIN,
     SERVICE_CONTINUE_LISTENING,
@@ -76,7 +76,7 @@ def user_rest():
     rest.async_close_session = AsyncMock()
     rest.async_close_session_without_sync = AsyncMock()
     with patch(
-        "custom_components.audiobookshelf.playback.AudiobookshelfRest",
+        "custom_components.audiobookshelf_plus.playback.AudiobookshelfRest",
         return_value=rest,
     ):
         yield rest
@@ -326,13 +326,15 @@ async def test_a_speaker_that_cannot_seek_does_not_write_progress(
     The player never gains SEEK, so playback starts at the top of the track.
     Writing that position back would rewind the listener's book. It must not.
     """
-    from custom_components.audiobookshelf.playback import _sessions
+    from custom_components.audiobookshelf_plus.playback import _sessions
 
     set_speaker(hass)
     player(
         on_play=lambda data: playing(hass, features=SPEAKER_IDLE, position=0, data=data)
     )
-    with patch("custom_components.audiobookshelf.playback.asyncio.sleep", AsyncMock()):
+    with patch(
+        "custom_components.audiobookshelf_plus.playback.asyncio.sleep", AsyncMock()
+    ):
         await call(hass, user_id="ha-alice")
 
     assert _sessions(hass)[SPEAKER].sync_enabled is False
@@ -353,7 +355,7 @@ async def test_stopping_never_writes_a_zero(hass, linked, user_rest, player) -> 
     wrote it to Audiobookshelf, wiping the listener's place in the book. The last
     position we actually saw must be used instead.
     """
-    from custom_components.audiobookshelf.playback import _sessions
+    from custom_components.audiobookshelf_plus.playback import _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))
@@ -385,7 +387,7 @@ async def test_switching_media_closes_our_session(
     hass, linked, user_rest, player
 ) -> None:
     """Someone plays Spotify on the speaker; our session should not linger."""
-    from custom_components.audiobookshelf.playback import _sessions
+    from custom_components.audiobookshelf_plus.playback import _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))
@@ -406,7 +408,7 @@ async def test_speaker_disappearing_closes_our_session(
     hass, linked, user_rest, player
 ) -> None:
     """An unplugged speaker must not leave a session open on the server."""
-    from custom_components.audiobookshelf.playback import _sessions
+    from custom_components.audiobookshelf_plus.playback import _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))
@@ -422,7 +424,7 @@ async def test_speaker_disappearing_closes_our_session(
 
 async def test_progress_syncs_while_playing(hass, linked, user_rest, player) -> None:
     """The periodic tick pushes the speaker position back to Audiobookshelf."""
-    from custom_components.audiobookshelf.playback import _make_ticker, _sessions
+    from custom_components.audiobookshelf_plus.playback import _make_ticker, _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=700, data=data))
@@ -438,7 +440,7 @@ async def test_ticker_is_quiet_when_not_playing(
     hass, linked, user_rest, player
 ) -> None:
     """A paused speaker records its position but writes nothing."""
-    from custom_components.audiobookshelf.playback import _make_ticker, _sessions
+    from custom_components.audiobookshelf_plus.playback import _make_ticker, _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))
@@ -455,14 +457,14 @@ async def test_ticker_is_quiet_when_not_playing(
 
 async def test_ticker_after_session_gone(hass, linked, user_rest) -> None:
     """A tick that fires after teardown is a no-op."""
-    from custom_components.audiobookshelf.playback import _make_ticker
+    from custom_components.audiobookshelf_plus.playback import _make_ticker
 
     await _make_ticker(hass, SPEAKER)(None)  # must not raise
 
 
 async def test_sync_failure_is_swallowed(hass, linked, user_rest, player) -> None:
     """A hiccup mid-book must not raise into the Home Assistant timer."""
-    from custom_components.audiobookshelf.playback import _make_ticker
+    from custom_components.audiobookshelf_plus.playback import _make_ticker
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=700, data=data))
@@ -474,7 +476,7 @@ async def test_sync_failure_is_swallowed(hass, linked, user_rest, player) -> Non
 
 async def test_close_failure_is_swallowed(hass, linked, user_rest, player) -> None:
     """Nor must a failure to close."""
-    from custom_components.audiobookshelf.playback import async_teardown
+    from custom_components.audiobookshelf_plus.playback import async_teardown
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=700, data=data))
@@ -486,7 +488,7 @@ async def test_close_failure_is_swallowed(hass, linked, user_rest, player) -> No
 
 async def test_teardown_closes_open_sessions(hass, linked, user_rest, player) -> None:
     """Unloading the integration must not leave sessions open on the server."""
-    from custom_components.audiobookshelf.playback import _sessions, async_teardown
+    from custom_components.audiobookshelf_plus.playback import _sessions, async_teardown
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))
@@ -501,7 +503,7 @@ async def test_resuming_twice_replaces_the_session(
     hass, linked, user_rest, player
 ) -> None:
     """Starting again on the same speaker closes the first session first."""
-    from custom_components.audiobookshelf.playback import _sessions
+    from custom_components.audiobookshelf_plus.playback import _sessions
 
     set_speaker(hass)
     player(on_play=lambda data: playing(hass, position=600, data=data))

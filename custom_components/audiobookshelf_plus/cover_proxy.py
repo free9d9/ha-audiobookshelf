@@ -49,7 +49,7 @@ class AudiobookshelfCoverView(HomeAssistantView):
     """Serve ABS cover art. Auth is satisfied by the signed path."""
 
     url = COVER_URL
-    name = "api:audiobookshelf:cover"
+    name = "api:audiobookshelf_plus:cover"
     requires_auth = True
 
     def __init__(self, hass: HomeAssistant) -> None:

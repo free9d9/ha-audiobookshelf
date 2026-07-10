@@ -2,10 +2,10 @@
 asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = [".git"]
-addopts = "--cov=custom_components.audiobookshelf --cov-report=term-missing"
+addopts = "--cov=custom_components.audiobookshelf_plus --cov-report=term-missing"
 
 [tool.coverage.run]
-source = ["custom_components/audiobookshelf"]
+source = ["custom_components/audiobookshelf_plus"]
 
 [tool.coverage.report]
 exclude_lines = [

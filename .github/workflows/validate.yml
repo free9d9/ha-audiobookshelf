@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install -r requirements-test.txt mypy
-      - run: mypy custom_components/audiobookshelf --strict
+      - run: mypy custom_components/audiobookshelf_plus --strict
 
   tests:
     name: pytest

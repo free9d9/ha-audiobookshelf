@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.audiobookshelf.cover_proxy import (
+from custom_components.audiobookshelf_plus.cover_proxy import (
     _SIGNED_CACHE,
     signed_cover_url,
 )
@@ -12,7 +12,7 @@ async def test_signed_url_carries_a_signature(hass, init_integration) -> None:
     """Covers are unauthenticated on the server; the proxy is not."""
     url = signed_cover_url(hass, init_integration.entry_id, "item-1", 123)
     assert url.startswith(
-        f"/api/audiobookshelf/cover/{init_integration.entry_id}/item-1"
+        f"/api/audiobookshelf_plus/cover/{init_integration.entry_id}/item-1"
     )
     assert "v=123" in url
     assert "authSig=" in url
@@ -43,12 +43,14 @@ async def test_signed_url_is_resigned_near_expiry(hass, init_integration) -> Non
     _SIGNED_CACHE[raw] = (url, 0.0)
     fresh = signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
     assert _SIGNED_CACHE[raw][1] > 0.0
-    assert fresh.startswith("/api/audiobookshelf/cover/")
+    assert fresh.startswith("/api/audiobookshelf_plus/cover/")
 
 
 async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
     """The browser gets the bytes, and cache headers the server never sent."""
-    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
+    from custom_components.audiobookshelf_plus.cover_proxy import (
+        AudiobookshelfCoverView,
+    )
 
     view = AudiobookshelfCoverView(hass)
 
@@ -81,7 +83,9 @@ async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
 
 async def test_cover_view_revalidates(hass, init_integration) -> None:
     """A matching ETag returns 304, so the image is not sent twice."""
-    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
+    from custom_components.audiobookshelf_plus.cover_proxy import (
+        AudiobookshelfCoverView,
+    )
 
     view = AudiobookshelfCoverView(hass)
 
@@ -97,7 +101,9 @@ async def test_cover_view_unknown_entry(hass, init_integration) -> None:
     """A request for an entry that is gone is a 404, not a crash."""
     from aiohttp import web
 
-    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
+    from custom_components.audiobookshelf_plus.cover_proxy import (
+        AudiobookshelfCoverView,
+    )
 
     view = AudiobookshelfCoverView(hass)
 
@@ -113,7 +119,9 @@ async def test_cover_view_upstream_missing(hass, init_integration) -> None:
     """Audiobookshelf answering with something that is not an image is a 404."""
     from aiohttp import web
 
-    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
+    from custom_components.audiobookshelf_plus.cover_proxy import (
+        AudiobookshelfCoverView,
+    )
 
     view = AudiobookshelfCoverView(hass)
 
@@ -143,7 +151,9 @@ async def test_cover_view_upstream_error(hass, init_integration) -> None:
     """A dead server is a 502."""
     from aiohttp import ClientError, web
 
-    from custom_components.audiobookshelf.cover_proxy import AudiobookshelfCoverView
+    from custom_components.audiobookshelf_plus.cover_proxy import (
+        AudiobookshelfCoverView,
+    )
 
     view = AudiobookshelfCoverView(hass)
 

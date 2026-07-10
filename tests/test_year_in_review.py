@@ -14,16 +14,16 @@ from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from custom_components.audiobookshelf.api import (
+from custom_components.audiobookshelf_plus.api import (
     AudiobookshelfRest,
     AudiobookshelfRestError,
 )
-from custom_components.audiobookshelf.const import (
+from custom_components.audiobookshelf_plus.const import (
     CONF_LINKED_USERS,
     DOMAIN,
     SERVICE_YEAR_IN_REVIEW,
 )
-from custom_components.audiobookshelf.year_in_review import _hours, _month
+from custom_components.audiobookshelf_plus.year_in_review import _hours, _month
 
 from .conftest import URL, make_api_key
 
@@ -76,7 +76,7 @@ def user_rest():
     rest = MagicMock()
     rest.async_get_year_in_review = AsyncMock(return_value=YEAR_2026)
     with patch(
-        "custom_components.audiobookshelf.year_in_review.AudiobookshelfRest",
+        "custom_components.audiobookshelf_plus.year_in_review.AudiobookshelfRest",
         return_value=rest,
     ):
         yield rest

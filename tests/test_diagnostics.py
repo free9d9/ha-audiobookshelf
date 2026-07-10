@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from custom_components.audiobookshelf.const import CONF_LINKED_USERS
-from custom_components.audiobookshelf.diagnostics import (
+from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS
+from custom_components.audiobookshelf_plus.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 

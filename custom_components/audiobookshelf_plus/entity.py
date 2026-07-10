@@ -65,7 +65,7 @@ class AudiobookshelfEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
             identifiers={(DOMAIN, entry_id)},
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="Audiobookshelf",
-            name="Audiobookshelf",
+            name="Audiobookshelf Plus",
             configuration_url=coordinator.base_url,
         )
 
@@ -136,7 +136,7 @@ class AudiobookshelfUserEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="Audiobookshelf",
             model="User",
-            name=f"Audiobookshelf {user.username}",
+            name=f"Audiobookshelf Plus {user.username}",
             via_device=(DOMAIN, entry_id),
         )
 

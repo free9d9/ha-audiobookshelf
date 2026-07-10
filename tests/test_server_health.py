@@ -12,17 +12,17 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.audiobookshelf.const import (
+from custom_components.audiobookshelf_plus.const import (
     EVENT_SCAN_COMPLETED,
     REFRESH_COOLDOWN_SECONDS,
     RELEASE_CHECK_INTERVAL,
 )
-from custom_components.audiobookshelf.release import async_get_latest_release
+from custom_components.audiobookshelf_plus.release import async_get_latest_release
 
 from .conftest import LATEST_RELEASE, SERVER_VERSION
 
 SCANNING = "binary_sensor.audiobooks_scanning"
-UPDATE = "update.audiobookshelf_server"
+UPDATE = "update.audiobookshelf_plus_server"
 
 TASK_SCAN_STARTED = {
     "id": "task-1",

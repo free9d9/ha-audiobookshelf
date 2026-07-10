@@ -19,9 +19,9 @@ from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
-from custom_components.audiobookshelf.coordinator import _api_key_expiry, _is_new
-from custom_components.audiobookshelf.playback import (
+from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS, DOMAIN
+from custom_components.audiobookshelf_plus.coordinator import _api_key_expiry, _is_new
+from custom_components.audiobookshelf_plus.playback import (
     ActiveSession,
     _async_end_session,
     _make_ticker,
@@ -71,7 +71,7 @@ async def test_a_user_record_with_no_id_is_skipped(
 
     assert mock_rest.async_get_user_stats.await_count == 1
     # An account we cannot key on is an account we cannot track.
-    assert hass.states.get("sensor.audiobookshelf_users").state == "1"
+    assert hass.states.get("sensor.audiobookshelf_plus_users").state == "1"
 
 
 # ----------------------------------------------------------------- migration
@@ -96,7 +96,7 @@ async def test_migration_leaves_unrelated_entities_alone(
         "sensor",
         DOMAIN,
         f"{entry.entry_id}_libraries",
-        suggested_object_id="audiobookshelf_libraries",
+        suggested_object_id="audiobookshelf_plus_libraries",
         config_entry=entry,
     )
 
@@ -120,7 +120,7 @@ async def test_release_notes_before_github_has_answered(
     await hass.async_block_till_done()
 
     component = hass.data["entity_components"]["update"]
-    entity = component.get_entity("update.audiobookshelf_server")
+    entity = component.get_entity("update.audiobookshelf_plus_server")
     assert await entity.async_release_notes() is None
 
 

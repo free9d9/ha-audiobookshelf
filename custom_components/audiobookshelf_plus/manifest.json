@@ -1,5 +1,5 @@
 {
-  "domain": "audiobookshelf",
+  "domain": "audiobookshelf_plus",
   "name": "Audiobookshelf",
   "codeowners": [
     "@free9d9"
@@ -20,5 +20,5 @@
   "requirements": [
     "aioaudiobookshelf==0.1.22"
   ],
-  "version": "0.7.0"
+  "version": "0.8.0"
 }

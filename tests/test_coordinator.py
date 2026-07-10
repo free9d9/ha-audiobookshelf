@@ -8,15 +8,15 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import issue_registry as ir
 
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import (
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
+from custom_components.audiobookshelf_plus.const import (
     DOMAIN,
     EVENT_PLAYBACK_STARTED,
     EVENT_PLAYBACK_STOPPED,
     SCAN_INTERVAL,
     SCAN_INTERVAL_LISTENING,
 )
-from custom_components.audiobookshelf.coordinator import _api_key_expiry
+from custom_components.audiobookshelf_plus.coordinator import _api_key_expiry
 
 from .conftest import make_api_key, open_session
 
@@ -45,7 +45,7 @@ async def test_recently_added_entry_shape(hass, init_integration) -> None:
     assert entry["media_type"] == "audiobook"
     assert entry["runtime"] == 60
     assert entry["genres"] == "Fantasy, Fiction"
-    assert entry["poster"].startswith("/api/audiobookshelf/cover/")
+    assert entry["poster"].startswith("/api/audiobookshelf_plus/cover/")
     assert "authSig=" in entry["poster"]
     assert "description" not in entry
 
@@ -219,7 +219,7 @@ async def test_expiring_key_raises_a_repair_issue(
     from homeassistant.const import CONF_API_KEY, CONF_URL
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-    from custom_components.audiobookshelf.const import CONF_LINKED_USERS
+    from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS
 
     from .conftest import URL
 

@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Final
 
-DOMAIN: Final = "audiobookshelf"
+DOMAIN: Final = "audiobookshelf_plus"
 
 # REST fallback poll. The socket carries the real-time signal; this is a safety net.
 SCAN_INTERVAL: Final = timedelta(minutes=5)
@@ -82,7 +82,7 @@ NEW_ITEM_DAYS: Final = 7
 # Cover proxy. Covers are unauthenticated on ABS, but pointing a browser at the
 # raw ABS host breaks off-LAN access and is blocked as mixed content under
 # HTTPS, so we proxy and hand out signed HA URLs instead.
-COVER_URL: Final = "/api/audiobookshelf/cover/{entry_id}/{item_id}"
+COVER_URL: Final = "/api/audiobookshelf_plus/cover/{entry_id}/{item_id}"
 COVER_SIGN_TTL: Final = timedelta(days=7)
 # Re-sign this long before expiry so the URL stays stable between polls and
 # browsers keep their cached copy.

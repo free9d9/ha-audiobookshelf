@@ -14,13 +14,13 @@ from homeassistant.const import ATTR_SUPPORTED_FEATURES
 from homeassistant.core import State
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from custom_components.audiobookshelf.api import AudiobookshelfRest
-from custom_components.audiobookshelf.coordinator import (
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRest
+from custom_components.audiobookshelf_plus.coordinator import (
     _looks_like_ebook_library,
     _ms_to_dt,
     _parse_session,
 )
-from custom_components.audiobookshelf.playback import (
+from custom_components.audiobookshelf_plus.playback import (
     _extrapolated_position,
     _track_for_position,
 )
@@ -34,7 +34,7 @@ async def test_bad_api_key_triggers_reauth(hass, mock_config_entry, mock_rest) -
     """A rejected key must start a reauth flow, not retry forever."""
     mock_config_entry.add_to_hass(hass)
     with patch(
-        "custom_components.audiobookshelf.coordinator.absapi.get_admin_client_by_token",
+        "custom_components.audiobookshelf_plus.coordinator.absapi.get_admin_client_by_token",
         AsyncMock(side_effect=LoginError),
     ):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
@@ -46,7 +46,7 @@ async def test_unreachable_server_retries(hass, mock_config_entry, mock_rest) ->
     """A server that is merely down should be retried, not abandoned."""
     mock_config_entry.add_to_hass(hass)
     with patch(
-        "custom_components.audiobookshelf.coordinator.absapi.get_admin_client_by_token",
+        "custom_components.audiobookshelf_plus.coordinator.absapi.get_admin_client_by_token",
         AsyncMock(side_effect=ClientError),
     ):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
@@ -85,7 +85,9 @@ async def test_stream_update_for_an_unknown_user(hass, init_integration) -> None
 
 async def test_stream_update_before_first_refresh(hass, mock_config_entry) -> None:
     """An event arriving before any data exists is ignored."""
-    from custom_components.audiobookshelf.coordinator import AudiobookshelfCoordinator
+    from custom_components.audiobookshelf_plus.coordinator import (
+        AudiobookshelfCoordinator,
+    )
 
     mock_config_entry.add_to_hass(hass)
     coordinator = AudiobookshelfCoordinator(hass, mock_config_entry)
@@ -156,10 +158,14 @@ def test_track_for_position_falls_back_to_the_first() -> None:
 
 async def test_wait_until_seekable_times_out(hass) -> None:
     """A speaker that never starts playing is not seekable."""
-    from custom_components.audiobookshelf.playback import _async_wait_until_seekable
+    from custom_components.audiobookshelf_plus.playback import (
+        _async_wait_until_seekable,
+    )
 
     hass.states.async_set("media_player.dead", "idle", {ATTR_SUPPORTED_FEATURES: 0})
-    with patch("custom_components.audiobookshelf.playback.asyncio.sleep", AsyncMock()):
+    with patch(
+        "custom_components.audiobookshelf_plus.playback.asyncio.sleep", AsyncMock()
+    ):
         assert (
             await _async_wait_until_seekable(hass, "media_player.dead", 0.01) is False
         )
@@ -167,9 +173,13 @@ async def test_wait_until_seekable_times_out(hass) -> None:
 
 async def test_wait_until_seekable_entity_vanishes(hass) -> None:
     """The entity disappearing mid-wait is handled."""
-    from custom_components.audiobookshelf.playback import _async_wait_until_seekable
+    from custom_components.audiobookshelf_plus.playback import (
+        _async_wait_until_seekable,
+    )
 
-    with patch("custom_components.audiobookshelf.playback.asyncio.sleep", AsyncMock()):
+    with patch(
+        "custom_components.audiobookshelf_plus.playback.asyncio.sleep", AsyncMock()
+    ):
         assert (
             await _async_wait_until_seekable(hass, "media_player.gone", 0.01) is False
         )
@@ -182,7 +192,7 @@ async def test_recently_added_attributes_when_library_vanishes(
     hass, init_integration
 ) -> None:
     """A sensor whose library was deleted reports nothing rather than raising."""
-    from custom_components.audiobookshelf.sensor import (
+    from custom_components.audiobookshelf_plus.sensor import (
         AudiobookshelfRecentlyAddedSensor,
     )
 
@@ -198,7 +208,7 @@ async def test_recently_added_attributes_when_library_vanishes(
 
 async def test_media_player_for_a_removed_user(hass, init_integration) -> None:
     """Same for a user who was deleted on the server."""
-    from custom_components.audiobookshelf.media_player import (
+    from custom_components.audiobookshelf_plus.media_player import (
         AudiobookshelfMediaPlayer,
     )
 
@@ -231,7 +241,7 @@ async def test_media_player_podcast_content_type(
 
     from homeassistant.components.media_player import MediaType
 
-    state = hass.states.get("media_player.audiobookshelf_alice")
+    state = hass.states.get("media_player.audiobookshelf_plus_alice")
     assert state.attributes["media_content_type"] == MediaType.PODCAST
 
 
@@ -246,7 +256,7 @@ async def test_media_player_zero_duration(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    state = hass.states.get("media_player.audiobookshelf_alice")
+    state = hass.states.get("media_player.audiobookshelf_plus_alice")
     assert "media_duration" not in state.attributes
 
 

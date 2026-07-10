@@ -6,7 +6,7 @@ import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from custom_components.audiobookshelf.api import (
+from custom_components.audiobookshelf_plus.api import (
     AudiobookshelfRest,
     AudiobookshelfRestError,
 )

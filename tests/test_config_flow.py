@@ -11,8 +11,8 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
+from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS, DOMAIN
 
 from .conftest import API_KEY, URL
 
@@ -29,14 +29,14 @@ def _status(payload=STATUS_OK, status=200):
     session = AsyncMock()
     session.get = lambda *a, **kw: response
     return patch(
-        "custom_components.audiobookshelf.config_flow.async_get_clientsession",
+        "custom_components.audiobookshelf_plus.config_flow.async_get_clientsession",
         return_value=session,
     )
 
 
 def _validated(side_effect=None):
     return patch(
-        "custom_components.audiobookshelf.config_flow.absapi.get_admin_client_by_token",
+        "custom_components.audiobookshelf_plus.config_flow.absapi.get_admin_client_by_token",
         AsyncMock(side_effect=side_effect),
     )
 
@@ -107,7 +107,7 @@ async def test_user_flow_status_unreachable(hass) -> None:
     session = MagicMock()
     session.get = MagicMock(side_effect=ClientError)
     with patch(
-        "custom_components.audiobookshelf.config_flow.async_get_clientsession",
+        "custom_components.audiobookshelf_plus.config_flow.async_get_clientsession",
         return_value=session,
     ):
         result = await hass.config_entries.flow.async_configure(

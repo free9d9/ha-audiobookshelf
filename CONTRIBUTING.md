@@ -27,7 +27,7 @@ Assistant release this integration targets. Bump both together.
 ```bash
 ruff check custom_components tests
 ruff format --check custom_components tests
-mypy custom_components/audiobookshelf --strict
+mypy custom_components/audiobookshelf_plus --strict
 pytest --cov-fail-under=95
 ```
 

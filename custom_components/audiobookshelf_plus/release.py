@@ -4,7 +4,7 @@ This is the only part of the integration that leaves your network. Audiobookshel
 exposes no version-check endpoint of its own, so there is nowhere else to ask.
 
 It is checked once a day, it never fails a refresh, and disabling
-`update.audiobookshelf_server` stops it being used. Unauthenticated GitHub allows
+`update.audiobookshelf_plus_server` stops it being used. Unauthenticated GitHub allows
 sixty requests an hour per address, which a daily check will never approach, but
 a shared address might: a rate-limited or offline check simply leaves the last
 known answer in place.

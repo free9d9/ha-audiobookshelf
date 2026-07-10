@@ -14,8 +14,8 @@ import pytest
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.audiobookshelf.const import CONF_LINKED_USERS, DOMAIN
-from custom_components.audiobookshelf.release import ReleaseInfo
+from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS, DOMAIN
+from custom_components.audiobookshelf_plus.release import ReleaseInfo
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -129,11 +129,11 @@ def mock_abs_client() -> Generator[MagicMock]:
 
     with (
         patch(
-            "custom_components.audiobookshelf.coordinator.absapi.get_admin_client_by_token",
+            "custom_components.audiobookshelf_plus.coordinator.absapi.get_admin_client_by_token",
             AsyncMock(return_value=client),
         ),
         patch(
-            "custom_components.audiobookshelf.coordinator.SocketClient",
+            "custom_components.audiobookshelf_plus.coordinator.SocketClient",
             return_value=socket,
         ),
     ):
@@ -175,7 +175,7 @@ def mock_rest() -> Generator[MagicMock]:
     rest.async_delete_api_key = AsyncMock()
 
     with patch(
-        "custom_components.audiobookshelf.coordinator.AudiobookshelfRest",
+        "custom_components.audiobookshelf_plus.coordinator.AudiobookshelfRest",
         return_value=rest,
     ):
         yield rest
@@ -185,7 +185,7 @@ def mock_rest() -> Generator[MagicMock]:
 def mock_release() -> Generator[AsyncMock]:
     """Never let the test suite call GitHub."""
     with patch(
-        "custom_components.audiobookshelf.coordinator.async_get_latest_release",
+        "custom_components.audiobookshelf_plus.coordinator.async_get_latest_release",
         AsyncMock(return_value=LATEST_RELEASE),
     ) as mock:
         yield mock

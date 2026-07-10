@@ -11,8 +11,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.audiobookshelf.api import AudiobookshelfRestError
-from custom_components.audiobookshelf.const import DOMAIN
+from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
+from custom_components.audiobookshelf_plus.const import DOMAIN
 
 from .conftest import open_session
 
@@ -54,8 +54,8 @@ async def test_listening_now_ignores_stale_sessions(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    assert hass.states.get("sensor.audiobookshelf_listening_now").state == "0"
-    open_sessions = hass.states.get("sensor.audiobookshelf_open_sessions")
+    assert hass.states.get("sensor.audiobookshelf_plus_listening_now").state == "0"
+    open_sessions = hass.states.get("sensor.audiobookshelf_plus_open_sessions")
     assert open_sessions.state == "1"
     assert open_sessions.attributes["users"] == [{"user": "Alice", "live": False}]
 
@@ -69,7 +69,7 @@ async def test_listening_now_lists_live_listeners(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.audiobookshelf_listening_now")
+    state = hass.states.get("sensor.audiobookshelf_plus_listening_now")
     assert state.state == "1"
     assert state.attributes["listeners"][0]["user"] == "Alice"
     assert state.attributes["listeners"][0]["title"] == "A Book"
@@ -78,7 +78,7 @@ async def test_listening_now_lists_live_listeners(
 async def test_realtime_binary_sensor(hass, init_integration) -> None:
     """Connectivity reflects the socket, not the server."""
     assert (
-        hass.states.get("binary_sensor.audiobookshelf_realtime_updates").state
+        hass.states.get("binary_sensor.audiobookshelf_plus_realtime_updates").state
         == STATE_ON
     )
 
@@ -92,7 +92,7 @@ async def test_realtime_binary_sensor_off_when_socket_down(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     assert (
-        hass.states.get("binary_sensor.audiobookshelf_realtime_updates").state
+        hass.states.get("binary_sensor.audiobookshelf_plus_realtime_updates").state
         == STATE_OFF
     )
 
@@ -125,7 +125,7 @@ async def test_scan_button_failure_raises(hass, init_integration, mock_rest) -> 
 
 async def test_media_player_idle_without_a_session(hass, init_integration) -> None:
     """No session means idle, and no metadata."""
-    state = hass.states.get("media_player.audiobookshelf_alice")
+    state = hass.states.get("media_player.audiobookshelf_plus_alice")
     assert state.state == MediaPlayerState.IDLE
     assert state.attributes.get("media_title") is None
 
@@ -139,7 +139,7 @@ async def test_media_player_playing(
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    state = hass.states.get("media_player.audiobookshelf_alice")
+    state = hass.states.get("media_player.audiobookshelf_plus_alice")
     assert state.state == MediaPlayerState.PLAYING
     assert state.attributes["media_title"] == "A Book"
     assert state.attributes["media_artist"] == "An Author"
@@ -162,7 +162,7 @@ async def test_media_player_paused_when_session_is_stale(
     mock_config_entry.add_to_hass(hass)
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get("media_player.audiobookshelf_alice").state == (
+    assert hass.states.get("media_player.audiobookshelf_plus_alice").state == (
         MediaPlayerState.PAUSED
     )
 
@@ -170,8 +170,8 @@ async def test_media_player_paused_when_session_is_stale(
 async def test_dormant_users_are_disabled_by_default(hass, init_integration) -> None:
     """Alice listened recently; Bob never did."""
     registry = er.async_get(hass)
-    alice = registry.async_get("media_player.audiobookshelf_alice")
-    bob = registry.async_get("media_player.audiobookshelf_bob")
+    alice = registry.async_get("media_player.audiobookshelf_plus_alice")
+    bob = registry.async_get("media_player.audiobookshelf_plus_bob")
     assert alice.disabled_by is None
     assert bob.disabled_by is er.RegistryEntryDisabler.INTEGRATION
 
@@ -218,7 +218,7 @@ async def test_removed_library_device_is_pruned(
 
 async def test_manual_device_removal_only_when_gone(hass, init_integration) -> None:
     """A device the server still knows about cannot be removed by hand."""
-    from custom_components.audiobookshelf import async_remove_config_entry_device
+    from custom_components.audiobookshelf_plus import async_remove_config_entry_device
 
     registry = dr.async_get(hass)
     live = next(
