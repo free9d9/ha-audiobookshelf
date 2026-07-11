@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
@@ -14,6 +15,10 @@ from .cover_proxy import AudiobookshelfCoverView
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
 from .year_in_review import async_setup_year_in_review
+
+# This integration has no YAML configuration; it is set up only from config
+# entries. `async_setup` exists solely to register the global actions.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
