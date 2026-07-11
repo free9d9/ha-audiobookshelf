@@ -167,6 +167,60 @@ async def test_media_player_paused_when_session_is_stale(
     )
 
 
+async def test_media_player_shows_last_session_when_idle(
+    hass, init_integration
+) -> None:
+    """An idle player still surfaces the user's last book.
+
+    Downloaded and offline playback never opens a live session, so the last
+    session is the only thing that makes it visible on a dashboard.
+    """
+    state = hass.states.get("media_player.audiobookshelf_plus_alice")
+    assert state.state == MediaPlayerState.IDLE
+    attrs = state.attributes
+    assert attrs["last_title"] == "Last Book"
+    assert attrs["last_author"] == "Last Author"
+    assert attrs["last_position"] == 1800.0
+    assert attrs["last_duration"] == 7200.0
+    assert isinstance(attrs["last_updated"], str)
+    cover = attrs["last_cover"]
+    assert cover.startswith("/api/audiobookshelf_plus/cover/")
+    assert "item-latest" in cover
+    assert "authSig=" in cover
+    # Idle: no live session, so its device attribute is absent.
+    assert "device" not in attrs
+
+
+async def test_media_player_without_a_last_session(
+    hass, mock_config_entry, mock_abs_client, mock_rest
+) -> None:
+    """A user with no usable last session exposes no last-* attributes.
+
+    A latest session that names no library item, or carries no timestamp, is
+    nothing to show. The live session's own attributes must be untouched.
+    """
+    mock_rest.async_get_users.return_value = [
+        {
+            "id": "u1",
+            "username": "Alice",
+            "type": "admin",
+            # Has an item but no timestamp: not enough to show.
+            "latestSession": {"libraryItemId": "item-x"},
+        },
+    ]
+    mock_rest.async_get_open_sessions.return_value = [open_session(user_id="u1")]
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    attrs = hass.states.get("media_player.audiobookshelf_plus_alice").attributes
+    assert "last_title" not in attrs
+    assert "last_cover" not in attrs
+    assert "last_position" not in attrs
+    # The live session is reported exactly as before.
+    assert attrs["device"] == "samsung SM-F946U1"
+
+
 async def test_dormant_users_are_disabled_by_default(hass, init_integration) -> None:
     """Alice listened recently; Bob never did."""
     registry = er.async_get(hass)

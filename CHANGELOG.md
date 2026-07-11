@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0]
+
+### Added
+
+- Per-user last-session attributes on each user's media player, so a dashboard
+  can show what someone was last listening to, and how far in, even when their
+  live player is idle. Audiobookshelf reports a user's latest session for
+  downloaded and offline playback too, which never opens a live session on the
+  server, so this makes that otherwise invisible listening visible. When a user
+  has a last session with a library item, the media player exposes `last_title`,
+  `last_author`, `last_cover` (a signed cover-proxy URL, the same kind the
+  recently-added feed uses), `last_position` and `last_duration` in seconds, and
+  `last_updated`. The live playing, paused and idle behavior is unchanged.
+
 ## [0.9.0]
 
 ### Changed

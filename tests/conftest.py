@@ -158,7 +158,14 @@ def mock_rest() -> Generator[MagicMock]:
                 "id": "u1",
                 "username": "Alice",
                 "type": "admin",
-                "latestSession": {"updatedAt": int(time.time() * 1000)},
+                "latestSession": {
+                    "libraryItemId": "item-latest",
+                    "displayTitle": "Last Book",
+                    "displayAuthor": "Last Author",
+                    "duration": 7200.0,
+                    "currentTime": 1800.0,
+                    "updatedAt": int(time.time() * 1000),
+                },
             },
             {"id": "u2", "username": "Bob", "type": "user", "latestSession": None},
         ]

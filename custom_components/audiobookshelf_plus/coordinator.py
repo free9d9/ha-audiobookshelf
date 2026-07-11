@@ -97,6 +97,24 @@ class SessionData:
 
 
 @dataclass(slots=True)
+class LatestSession:
+    """A user's most recently touched playback session.
+
+    Unlike an open session, Audiobookshelf reports this even for downloaded and
+    offline playback, which never opens a live session on the server. It is
+    therefore the only signal that lets an idle media player still show what
+    someone was last listening to, and how far in they are.
+    """
+
+    item_id: str
+    title: str
+    author: str
+    duration: float
+    current_time: float
+    updated_at: datetime
+
+
+@dataclass(slots=True)
 class UserData:
     """One Audiobookshelf user."""
 
@@ -106,6 +124,7 @@ class UserData:
     session: SessionData | None = None
     last_listened: datetime | None = None
     stats: ListeningStats | None = None
+    latest_session: LatestSession | None = None
 
 
 @dataclass(slots=True)
@@ -471,6 +490,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
                     (u.get("latestSession") or {}).get("updatedAt")
                 ),
                 stats=self._stats.get(u["id"]),
+                latest_session=_parse_latest_session(u.get("latestSession")),
             )
             for u in raw_users
             if u.get("id")
@@ -644,6 +664,28 @@ def _parse_session(raw: Any) -> SessionData | None:
         updated_at=updated,
         is_podcast=bool(raw.get("episodeId")),
         device=device,
+    )
+
+
+def _parse_latest_session(raw: Any) -> LatestSession | None:
+    """Build a LatestSession from a user's `latestSession`, if it names an item.
+
+    Audiobookshelf reports this for downloaded and offline playback too, so it is
+    kept even when no live session is open. Without a library item there is
+    nothing to show, so those are treated as absent.
+    """
+    if not isinstance(raw, dict) or not raw.get("libraryItemId"):
+        return None
+    updated = _ms_to_dt(raw.get("updatedAt"))
+    if updated is None:
+        return None
+    return LatestSession(
+        item_id=str(raw["libraryItemId"]),
+        title=raw.get("displayTitle") or "",
+        author=raw.get("displayAuthor") or "",
+        duration=float(raw.get("duration") or 0.0),
+        current_time=float(raw.get("currentTime") or 0.0),
+        updated_at=updated,
     )
 
 

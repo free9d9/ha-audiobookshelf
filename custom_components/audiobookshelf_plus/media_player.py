@@ -9,6 +9,7 @@ actual playback, use Music Assistant's Audiobookshelf provider.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import (
@@ -20,6 +21,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator, UserData
+from .cover_proxy import signed_cover_url
 from .entity import (
     AudiobookshelfUserEntity,
     async_setup_dynamic_entities,
@@ -143,9 +145,36 @@ class AudiobookshelfMediaPlayer(AudiobookshelfUserEntity, MediaPlayerEntity):
         return f"{self.coordinator.base_url}/api/items/{user.session.item_id}/cover"
 
     @property
-    def extra_state_attributes(self) -> dict[str, str] | None:
-        """Which device the session is on."""
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """The live session's device, plus this user's last-known book.
+
+        The last-* attributes come from the user's most recent session, which
+        Audiobookshelf reports even for downloaded and offline playback. They let
+        a dashboard show what someone was listening to, and how far in, while
+        their live player sits idle. They are independent of the live session and
+        appear whenever a last session with a library item exists.
+        """
         user = self.user
-        if user is None or user.session is None:
-            return None
-        return {"device": user.session.device, "session_id": user.session.session_id}
+        attrs: dict[str, Any] = {}
+        if user is not None and user.session is not None:
+            attrs["device"] = user.session.device
+            attrs["session_id"] = user.session.session_id
+
+        if user is not None and (latest := user.latest_session) is not None:
+            attrs["last_title"] = latest.title
+            attrs["last_author"] = latest.author
+            # The same signed cover-proxy URL the recently-added feed builds, so
+            # the frontend never touches the Audiobookshelf host directly. The
+            # session's updatedAt (ms) is the cache-busting version, exactly as
+            # the feed uses the item's updatedAt.
+            attrs["last_cover"] = signed_cover_url(
+                self.coordinator.hass,
+                self.coordinator.entry_id,
+                latest.item_id,
+                int(latest.updated_at.timestamp() * 1000),
+            )
+            attrs["last_position"] = latest.current_time
+            attrs["last_duration"] = latest.duration
+            attrs["last_updated"] = latest.updated_at.isoformat()
+
+        return attrs or None
