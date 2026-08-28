@@ -271,7 +271,12 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             severity=ir.IssueSeverity.WARNING,
             translation_key=ISSUE_KEY_EXPIRING,
             translation_placeholders={
-                "expires": expires.strftime("%Y-%m-%d"),
+                # A human reads this date, so render it in Home Assistant's own
+                # timezone. The claim is UTC, and west of Greenwich an expiry in
+                # the small hours UTC falls on the previous local day: telling
+                # someone their key dies on the 9th when it dies on the 8th
+                # invites them to act a day late.
+                "expires": dt_util.as_local(expires).strftime("%Y-%m-%d"),
                 "url": self.base_url,
             },
         )

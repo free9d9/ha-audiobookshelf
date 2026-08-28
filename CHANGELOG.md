@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1]
+
+### Fixed
+
+- The "API key is about to expire" repair issue showed the expiry date in UTC
+  rather than in Home Assistant's own timezone. The date comes from the key's
+  `exp` claim, which is UTC, and west of Greenwich a key that lapses in the
+  small hours UTC belongs to the previous local day. Anyone in a negative-offset
+  zone was told their key survived a day longer than it does, and could act a
+  day late on it. The date is now rendered with `dt_util.as_local`, so it
+  follows whatever timezone the instance is configured for.
+
 ## [0.10.0]
 
 ### Added

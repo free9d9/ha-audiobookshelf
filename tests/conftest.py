@@ -25,14 +25,22 @@ URL = "http://abs.example.com:13378"
 NOW_MS = 1_700_000_000_000
 
 
-def make_api_key(expires_in_days: float | None = None) -> str:
+def make_api_key(
+    expires_in_days: float | None = None,
+    *,
+    expires_at: dt.datetime | None = None,
+) -> str:
     """Build a JWT-shaped API key, optionally with an `exp` claim.
 
     Audiobookshelf signs these; we only ever read them, so an unsigned fake with
-    the right shape exercises exactly the code path that matters.
+    the right shape exercises exactly the code path that matters. Pass
+    `expires_at` when the exact wall-clock instant matters, `expires_in_days`
+    when only the rough distance does.
     """
     claims: dict[str, Any] = {"keyId": "abc", "name": "HA", "type": "api"}
-    if expires_in_days is not None:
+    if expires_at is not None:
+        claims["exp"] = int(expires_at.timestamp())
+    elif expires_in_days is not None:
         claims["exp"] = int(time.time() + expires_in_days * 86400)
     body = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
     return f"header.{body}.signature"

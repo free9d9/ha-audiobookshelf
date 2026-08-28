@@ -239,6 +239,50 @@ async def test_expiring_key_raises_a_repair_issue(
     assert issue.severity is ir.IssueSeverity.WARNING
 
 
+async def test_expiry_date_is_rendered_in_the_local_timezone(
+    hass, mock_abs_client, mock_rest
+) -> None:
+    """A human reads this date, so it must be the local one.
+
+    The `exp` claim is UTC. West of Greenwich an expiry in the small hours UTC
+    belongs to the previous local day, so rendering the raw UTC date tells
+    someone their key survives a day longer than it does.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from homeassistant.const import CONF_API_KEY, CONF_URL
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS
+
+    from .conftest import URL
+
+    await hass.config.async_set_time_zone("Pacific/Honolulu")
+
+    # 05:00 UTC is 19:00 the previous day in Hawaii (UTC-10, and never any DST).
+    expires = (datetime.now(UTC) + timedelta(days=3)).replace(
+        hour=5, minute=0, second=0, microsecond=0
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="abs.example.com:13378",
+        data={CONF_URL: URL, CONF_API_KEY: make_api_key(expires_at=expires)},
+        options={CONF_LINKED_USERS: {}},
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    issue = ir.async_get(hass).async_get_issue(
+        DOMAIN, f"api_key_expiring_{entry.entry_id}"
+    )
+    assert issue is not None
+    assert issue.translation_placeholders is not None
+    shown = issue.translation_placeholders["expires"]
+    assert shown == (expires - timedelta(days=1)).strftime("%Y-%m-%d")
+    assert shown != expires.strftime("%Y-%m-%d")
+
+
 async def test_non_expiring_key_raises_nothing(hass, init_integration) -> None:
     """The recommended setup is quiet."""
     issues = ir.async_get(hass)
