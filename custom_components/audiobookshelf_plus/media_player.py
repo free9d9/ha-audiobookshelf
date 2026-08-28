@@ -19,6 +19,7 @@ from homeassistant.components.media_player.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator, UserData
 from .cover_proxy import signed_cover_url
@@ -175,6 +176,10 @@ class AudiobookshelfMediaPlayer(AudiobookshelfUserEntity, MediaPlayerEntity):
             )
             attrs["last_position"] = latest.current_time
             attrs["last_duration"] = latest.duration
-            attrs["last_updated"] = latest.updated_at.isoformat()
+            # Someone reads this one in the attributes panel, so render it in
+            # Home Assistant's timezone rather than the UTC the server reports.
+            # It stays offset-aware ISO-8601, so it is the same instant and any
+            # template or card parsing it is unaffected.
+            attrs["last_updated"] = dt_util.as_local(latest.updated_at).isoformat()
 
         return attrs or None

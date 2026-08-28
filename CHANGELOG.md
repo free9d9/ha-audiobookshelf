@@ -15,6 +15,17 @@ All notable changes to this project are documented here. The format is based on
   zone was told their key survived a day longer than it does, and could act a
   day late on it. The date is now rendered with `dt_util.as_local`, so it
   follows whatever timezone the instance is configured for.
+- The `last_updated` attribute on each user's media player rendered in UTC.
+  Nothing parses it, so it exists purely to be read, and reading UTC digits in
+  a negative-offset timezone can name the wrong day. It is now rendered in the
+  instance's timezone. It remains offset-aware ISO-8601 and the same instant,
+  so any template or card parsing it is unaffected.
+
+Timestamps that Home Assistant renders itself are unchanged: the
+`recently_added` and `last_scan` sensors hand over aware datetimes and are
+already shown in local time, and the `data[]` entries in the recently-added
+feed stay UTC ISO-8601 because they are transport for a card that formats them
+itself.
 
 ## [0.10.0]
 

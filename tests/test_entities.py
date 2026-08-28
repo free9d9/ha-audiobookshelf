@@ -191,6 +191,32 @@ async def test_media_player_shows_last_session_when_idle(
     assert "device" not in attrs
 
 
+async def test_last_updated_is_rendered_in_the_local_timezone(
+    hass, init_integration
+) -> None:
+    """A human reads this attribute, so it carries the local offset.
+
+    Audiobookshelf reports the instant in UTC. Rendering it raw showed UTC
+    digits in the attributes panel, which in Hawaii is ten hours out and can
+    name the wrong day entirely.
+    """
+    from datetime import datetime, timedelta
+
+    await hass.config.async_set_time_zone("Pacific/Honolulu")
+    await init_integration.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    attrs = hass.states.get("media_player.audiobookshelf_plus_alice").attributes
+    shown = datetime.fromisoformat(attrs["last_updated"])
+    assert shown.utcoffset() == timedelta(hours=-10)
+    # Same instant the server reported, only rendered in the house's zone, so
+    # anything parsing the attribute is unaffected.
+    assert (
+        shown
+        == init_integration.runtime_data.data.users["u1"].latest_session.updated_at
+    )
+
+
 async def test_media_player_without_a_last_session(
     hass, mock_config_entry, mock_abs_client, mock_rest
 ) -> None:
