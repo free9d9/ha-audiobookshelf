@@ -7,3 +7,6 @@ __pycache__/
 .coverage
 htmlcov/
 *.egg-info/
+
+# Local Claude Code notes: carries internal hostnames, and this repo is public.
+CLAUDE.md
