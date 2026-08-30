@@ -221,12 +221,15 @@ def stats_payload(today_h: float = 1.0) -> dict[str, Any]:
     """A listening-stats response, with a day map spanning the calendar buckets."""
     now = dt.date.today()
     days = {
-        now.isoformat(): today_h * 3600,
-        # yesterday, so it lands in this week only if today is not Monday
-        (now - dt.timedelta(days=1)).isoformat(): 3600.0,
         # first of this month, always inside month and year
         now.replace(day=1).isoformat(): 7200.0,
+        # yesterday, so it lands in this week only if today is not Monday
+        (now - dt.timedelta(days=1)).isoformat(): 3600.0,
         "not-a-date": 999.0,  # must be skipped, not crash
+        # Today goes in last so it wins the collisions the keys above can
+        # produce: on the first of the month that key IS today, and writing it
+        # earlier left the today bucket holding 7200.0 instead of `today_h`.
+        now.isoformat(): today_h * 3600,
     }
     return {
         "totalTime": 360000.0,  # 100 h, deliberately more than `days` sums to
