@@ -11,7 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
-from .cover_proxy import AudiobookshelfCoverView
+from .cover_proxy import AudiobookshelfCoverView, release_signed_urls
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
 from .year_in_review import async_setup_year_in_review
@@ -95,8 +95,9 @@ async def async_setup_entry(
 async def async_unload_entry(
     hass: HomeAssistant, entry: AudiobookshelfConfigEntry
 ) -> bool:
-    """Unload a config entry, closing any playback sessions we opened."""
-    await async_teardown(hass)
+    """Unload a config entry, closing the playback sessions it opened."""
+    await async_teardown(hass, entry.entry_id)
+    release_signed_urls(entry.entry_id)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

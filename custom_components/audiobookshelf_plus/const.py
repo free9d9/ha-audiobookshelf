@@ -46,6 +46,12 @@ TASK_LIBRARY_SCAN: Final = "library-scan"
 # passwords are ever collected.
 CONF_LINKED_USERS: Final = "linked_users"
 
+# Optional field on every action: which config entry (which Audiobookshelf server)
+# the call is for. One server is the normal case and needs no selector, but a
+# household can run two -- and `remove_progress` is not undoable, so an action
+# that cannot tell which server it means must refuse rather than guess.
+CONF_CONFIG_ENTRY: Final = "config_entry"
+
 SERVICE_CONTINUE_LISTENING: Final = "continue_listening"
 SERVICE_REMOVE_PROGRESS: Final = "remove_progress"
 SERVICE_YEAR_IN_REVIEW: Final = "get_year_in_review"

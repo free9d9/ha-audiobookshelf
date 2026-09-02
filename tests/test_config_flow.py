@@ -56,7 +56,7 @@ async def test_user_flow_creates_entry(hass, mock_abs_client, mock_rest) -> None
         await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Audiobookshelf"
+    assert result["title"] == "Audiobookshelf Plus (abs.example.com)"
     # Trailing slash stripped, host:port used as the unique id.
     assert result["data"] == {CONF_URL: URL, CONF_API_KEY: API_KEY}
     assert result["result"].unique_id == "abs.example.com:13378"

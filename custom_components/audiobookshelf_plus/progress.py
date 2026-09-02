@@ -25,8 +25,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AudiobookshelfRest, AudiobookshelfRestError
-from .const import CONF_LINKED_USERS, DOMAIN, SERVICE_REMOVE_PROGRESS
-from .playback import loaded_entry, resolve_user
+from .const import CONF_CONFIG_ENTRY, DOMAIN, SERVICE_REMOVE_PROGRESS
+from .playback import resolve_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ REMOVE_PROGRESS_SCHEMA = vol.Schema(
         vol.Optional(CONF_USER): cv.string,
         vol.Optional(CONF_SERIES): cv.string,
         vol.Optional(CONF_ITEM_ID): cv.string,
+        vol.Optional(CONF_CONFIG_ENTRY): cv.string,
     }
 )
 
@@ -62,14 +63,6 @@ async def _async_remove_progress(
     hass: HomeAssistant, call: ServiceCall
 ) -> ServiceResponse:
     """Remove a linked user's progress on one item, or on a whole series."""
-    entry = loaded_entry(hass)
-    coordinator = entry.runtime_data
-    linked = entry.options.get(CONF_LINKED_USERS, {})
-    if not linked:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="no_linked_users"
-        )
-
     series = call.data.get(CONF_SERIES)
     item_id = call.data.get(CONF_ITEM_ID)
     if bool(series) == bool(item_id):
@@ -77,7 +70,13 @@ async def _async_remove_progress(
             translation_domain=DOMAIN, translation_key="need_series_or_item"
         )
 
-    abs_user = resolve_user(call, linked)
+    # Resolved together, and strictly: this deletes progress that cannot be
+    # restored, so an action that cannot tell which server and which listener it
+    # means raises instead of picking one.
+    target = resolve_target(hass, call)
+    entry = target.entry
+    coordinator = entry.runtime_data
+    abs_user = target.user
     rest = AudiobookshelfRest(
         async_get_clientsession(hass),
         coordinator.base_url,
@@ -99,10 +98,18 @@ async def _async_remove_progress(
         ) from err
 
     _LOGGER.info(
-        "Removed %d progress record(s) for %s", len(removed), abs_user["username"]
+        "Removed %d progress record(s) for %s on %s",
+        len(removed),
+        abs_user["username"],
+        entry.title,
     )
     await coordinator.async_request_refresh()
-    return {"user": abs_user["username"], "removed": removed, "count": len(removed)}
+    return {
+        "user": abs_user["username"],
+        "server": entry.title,
+        "removed": removed,
+        "count": len(removed),
+    }
 
 
 async def _async_remove_one(rest: AudiobookshelfRest, item_id: str) -> list[str]:
@@ -120,10 +127,6 @@ async def _async_remove_series(rest: AudiobookshelfRest, series: str) -> list[st
 
     Only items the user has progress on are inspected, which is a handful rather
     than the whole library.
-
-    Note the comparison. wolffshots' equivalent reads
-    `if metadata.series_name is str and ...`, comparing a string value against
-    the *type* `str`. That is always False, so nothing was ever deleted.
     """
     me = await rest.async_get_me()
     wanted = series.casefold()

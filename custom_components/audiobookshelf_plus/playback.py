@@ -21,7 +21,7 @@ import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant.components.media_player.const import (
@@ -55,11 +55,15 @@ from homeassistant.helpers.event import (
 
 from .api import AudiobookshelfRest, AudiobookshelfRestError
 from .const import (
+    CONF_CONFIG_ENTRY,
     CONF_LINKED_USERS,
     DOMAIN,
     PROGRESS_SYNC_INTERVAL,
     SERVICE_CONTINUE_LISTENING,
 )
+
+if TYPE_CHECKING:
+    from .coordinator import AudiobookshelfConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +74,7 @@ CONTINUE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.entity_id,
         vol.Optional(CONF_USER): cv.string,
+        vol.Optional(CONF_CONFIG_ENTRY): cv.string,
         vol.Optional(CONF_SEEK, default=True): cv.boolean,
     }
 )
@@ -86,6 +91,7 @@ class ActiveSession:
     session_id: str
     rest: AudiobookshelfRest
     entity_id: str
+    entry_id: str
     username: str
     duration: float
     track_offset: float
@@ -119,10 +125,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     )
 
 
-async def async_teardown(hass: HomeAssistant) -> None:
-    """Close any sessions we opened, on unload."""
-    for entity_id in list(_sessions(hass)):
-        await _async_end_session(hass, entity_id, closing=True)
+async def async_teardown(hass: HomeAssistant, entry_id: str | None = None) -> None:
+    """Close the sessions one config entry opened, on unload.
+
+    The session map is global (it is keyed by speaker, and a speaker plays one
+    thing), so unloading one server must not close a session running against
+    another. Pass `entry_id` to close only that server's sessions; omit it to
+    close everything, which is what a full shutdown wants.
+    """
+    for entity_id, active in list(_sessions(hass).items()):
+        if entry_id is None or active.entry_id == entry_id:
+            await _async_end_session(hass, entity_id, closing=True)
 
 
 # ------------------------------------------------------------------ the action
@@ -130,15 +143,10 @@ async def async_teardown(hass: HomeAssistant) -> None:
 
 async def _async_continue_listening(hass: HomeAssistant, call: ServiceCall) -> None:
     """Resume a linked user's current book on a media player."""
-    entry = loaded_entry(hass)
+    resolved = resolve_target(hass, call)
+    entry = resolved.entry
     coordinator = entry.runtime_data
-    linked = entry.options.get(CONF_LINKED_USERS, {})
-    if not linked:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="no_linked_users"
-        )
-
-    abs_user = resolve_user(call, linked)
+    abs_user = resolved.user
     entity_id = call.data[ATTR_ENTITY_ID]
 
     target = hass.states.get(entity_id)
@@ -254,6 +262,7 @@ async def _async_continue_listening(hass: HomeAssistant, call: ServiceCall) -> N
         session_id=abs_session["id"],
         rest=rest,
         entity_id=entity_id,
+        entry_id=entry.entry_id,
         username=abs_user["username"],
         duration=float(abs_session.get("duration") or 0.0),
         track_offset=float(track.get("startOffset") or 0.0),
@@ -271,11 +280,12 @@ async def _async_continue_listening(hass: HomeAssistant, call: ServiceCall) -> N
     )
 
     _LOGGER.info(
-        "Resuming %r for %s on %s at %.0fs",
+        "Resuming %r for %s on %s at %.0fs (%s)",
         item["media"]["metadata"].get("title"),
         abs_user["username"],
         entity_id,
         position,
+        entry.title,
     )
 
 
@@ -493,6 +503,12 @@ def resolve_user(call: ServiceCall, linked: dict[str, Any]) -> dict[str, Any]:
     Home Assistant puts their user id on the call context, which is the only
     per-person signal available. Automations have no such context, so a single
     linked user is used when there is exactly one.
+
+    `user:` deliberately overrides the caller's context. Home Assistant's action
+    layer has no per-user permissions, so this is no wider than any other action
+    a dashboard can call -- but it does mean anyone who can call
+    `remove_progress` can name anyone linked, so keep those buttons off shared
+    dashboards you would not hand the keys to.
     """
     users: list[dict[str, Any]] = list(linked.values())
     if requested := call.data.get(CONF_USER):
@@ -521,11 +537,112 @@ def resolve_user(call: ServiceCall, linked: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def loaded_entry(hass: HomeAssistant) -> Any:
-    """Return the one loaded Audiobookshelf config entry."""
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if getattr(entry, "runtime_data", None) is not None:
-            return entry
+# ------------------------------------------------------- which server, and who
+
+
+@dataclass(frozen=True)
+class ServiceTarget:
+    """The server an action call is for, and the listener on it."""
+
+    entry: AudiobookshelfConfigEntry
+    user: dict[str, Any]
+
+
+def loaded_entries(hass: HomeAssistant) -> list[AudiobookshelfConfigEntry]:
+    """Every Audiobookshelf config entry that finished setting up."""
+    return [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if getattr(entry, "runtime_data", None) is not None
+    ]
+
+
+def resolve_target(hass: HomeAssistant, call: ServiceCall) -> ServiceTarget:
+    """Work out which server *and* which listener an action call means.
+
+    One Audiobookshelf server is the normal case and nothing has to be said. But
+    two can be configured (the unique id is host:port), and `remove_progress` is
+    destructive and not undoable, so guessing is not acceptable: picking
+    "whichever entry loaded first" is how you delete the wrong child's place in
+    a book on the wrong server.
+
+    So the two questions are answered together. An explicit `config_entry` picks
+    the server outright. Otherwise every loaded server is asked who the call is
+    for, and the answer stands only if exactly one of them can name a listener --
+    which is what happens with one server, and what usually happens with two,
+    since a person is generally linked on one of them. Anything less certain
+    raises and asks for `config_entry` rather than acting.
+    """
+    entries = loaded_entries(hass)
+    if not entries:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_loaded"
+        )
+
+    if requested := call.data.get(CONF_CONFIG_ENTRY):
+        entries = [_requested_entry(hass, entries, requested)]
+
+    matches: list[ServiceTarget] = []
+    problems: list[ServiceValidationError] = []
+    for entry in entries:
+        try:
+            matches.append(ServiceTarget(entry, _user_on(call, entry)))
+        except ServiceValidationError as err:
+            problems.append(err)
+
+    if len(matches) == 1:
+        return matches[0]
+
+    if matches:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="ambiguous_server",
+            translation_placeholders={
+                "servers": ", ".join(match.entry.title for match in matches)
+            },
+        )
+
+    # Nothing matched. With one server in play its own error is the useful one
+    # ("no linked users", "unknown user"); with several, none of those is the
+    # whole story, so say that plainly instead of picking one at random.
+    if len(problems) == 1:
+        raise problems[0]
     raise ServiceValidationError(
-        translation_domain=DOMAIN, translation_key="not_loaded"
+        translation_domain=DOMAIN,
+        translation_key="no_matching_server",
+        translation_placeholders={
+            "servers": ", ".join(entry.title for entry in entries)
+        },
     )
+
+
+def _requested_entry(
+    hass: HomeAssistant,
+    loaded: list[AudiobookshelfConfigEntry],
+    entry_id: str,
+) -> AudiobookshelfConfigEntry:
+    """Return the entry a caller named explicitly, if it is usable."""
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None or entry.domain != DOMAIN:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_config_entry",
+            translation_placeholders={"config_entry": entry_id},
+        )
+    if entry not in loaded:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="entry_not_loaded",
+            translation_placeholders={"server": entry.title},
+        )
+    return entry
+
+
+def _user_on(call: ServiceCall, entry: AudiobookshelfConfigEntry) -> dict[str, Any]:
+    """Return the linked user this call means on one particular server."""
+    linked = entry.options.get(CONF_LINKED_USERS, {})
+    if not linked:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="no_linked_users"
+        )
+    return resolve_user(call, linked)

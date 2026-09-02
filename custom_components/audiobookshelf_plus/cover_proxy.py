@@ -12,6 +12,7 @@ caching from the item's updatedAt (passed as ?v=).
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from time import time
 from typing import Any
 
@@ -25,9 +26,25 @@ from .const import COVER_SIGN_RENEW, COVER_SIGN_TTL, COVER_URL
 
 _LOGGER = logging.getLogger(__name__)
 
-# raw_path -> (signed_url, expires_epoch). Keeps the signed URL stable across
-# refreshes so the browser is not handed a new URL (and a cache miss) every poll.
-_SIGNED_CACHE: dict[str, tuple[str, float]] = {}
+
+@dataclass(frozen=True)
+class _Signed:
+    """One item's signed cover URL, and when it stops being usable."""
+
+    raw: str
+    signed: str
+    expires: float
+
+
+# (entry_id, item_id) -> the signed URL last handed out for it. Keeping it
+# stable across refreshes matters: a new URL every poll is a cache miss in the
+# browser, so the dashboard re-downloads every cover it is already showing.
+#
+# Keyed by item rather than by URL, deliberately. The raw URL carries the item's
+# updatedAt as ?v=, so an actively-edited library would mint a new key per edit
+# and never drop the old ones; one row per item means an edit *replaces* the row
+# it supersedes, and the map can never outgrow the number of covers rendered.
+_SIGNED_CACHE: dict[tuple[str, str], _Signed] = {}
 
 
 def signed_cover_url(
@@ -36,13 +53,36 @@ def signed_cover_url(
     """Return a stable, signed HA URL for an item's cover."""
     raw = COVER_URL.format(entry_id=entry_id, item_id=item_id) + f"?v={version}"
     now = time()
-    if (cached := _SIGNED_CACHE.get(raw)) is not None:
-        signed, expires = cached
-        if expires - now > COVER_SIGN_RENEW.total_seconds():
-            return signed
+    cached = _SIGNED_CACHE.get((entry_id, item_id))
+    if (
+        cached is not None
+        and cached.raw == raw
+        and cached.expires - now > COVER_SIGN_RENEW.total_seconds()
+    ):
+        return cached.signed
+
+    # Signing is rare -- once per cover per six days -- so this is the cheap
+    # place to drop rows for items that have since left the library, which
+    # otherwise sit here until Home Assistant restarts.
+    _purge_expired(now)
+
     signed = async_sign_path(hass, raw, COVER_SIGN_TTL)
-    _SIGNED_CACHE[raw] = (signed, now + COVER_SIGN_TTL.total_seconds())
+    _SIGNED_CACHE[(entry_id, item_id)] = _Signed(
+        raw, signed, now + COVER_SIGN_TTL.total_seconds()
+    )
     return signed
+
+
+def _purge_expired(now: float) -> None:
+    """Drop signed URLs that have lapsed."""
+    for key in [key for key, row in _SIGNED_CACHE.items() if row.expires <= now]:
+        del _SIGNED_CACHE[key]
+
+
+def release_signed_urls(entry_id: str) -> None:
+    """Forget one config entry's signed URLs, on unload."""
+    for key in [key for key in _SIGNED_CACHE if key[0] == entry_id]:
+        del _SIGNED_CACHE[key]
 
 
 class AudiobookshelfCoverView(HomeAssistantView):

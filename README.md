@@ -153,8 +153,8 @@ Progress is only ever written from a position the speaker actually reported.
 
 1. HACS → ⋮ → **Custom repositories**
 2. Repository: `https://github.com/free9d9/ha-audiobookshelf` - Category: **Integration**
-3. Install **Audiobookshelf**, then restart Home Assistant.
-4. **Settings → Devices & Services → Add Integration → Audiobookshelf.**
+3. Install **Audiobookshelf Plus**, then restart Home Assistant.
+4. **Settings → Devices & Services → Add Integration → Audiobookshelf Plus.**
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=audiobookshelf_plus)
 
@@ -314,6 +314,29 @@ tap_action:
     entity_id: media_player.kitchen_speaker
 ```
 
+## More than one server
+
+Each Audiobookshelf server is added separately (the unique id is host:port), and every
+entry is named after its host, so the integrations page tells them apart.
+
+All three actions take an optional **`config_entry`** field naming the server to act on.
+You do not need it with a single server, and you usually do not need it with two: the
+action asks every configured server who the call is for, and goes ahead when exactly one
+of them has a matching linked user. Where more than one does, it **refuses and asks**
+rather than picking. `remove_progress` cannot be undone, so guessing is not an option:
+
+```yaml
+action: audiobookshelf_plus.remove_progress
+data:
+  config_entry: 01JX8T4N0K7M9QW2ZC3V5B6D7E   # Settings → Devices & Services
+  user: Kid
+  series: Mistborn
+```
+
+In the UI the field is a picker, so the id never has to be typed. Unloading or reloading
+one server closes only the playback sessions that server opened; a book playing off the
+other one keeps going.
+
 ## Starting a series over
 
 `remove_progress` deletes a linked user's saved position, either on one item or on every
@@ -381,9 +404,8 @@ statistics.
 differ, and there is no safe way to claim another integration's entities. Expect to fix up
 dashboards and automations once.
 
-One behavioural note: that integration's `remove_my_progress` action never deleted
-anything. Its filter reads `if metadata.series_name is str`, comparing a string against the
-*type* `str`, which is always false. The equivalent here is `remove_progress`, and it works.
+The equivalent of its `remove_my_progress` action is `remove_progress` here, which deletes
+per-item or per-series progress as the linked user and returns the titles it removed.
 
 ## What you can do with it
 
@@ -505,7 +527,7 @@ filters on whether the position was synced recently.
 
 ## Removing the integration
 
-Settings → Devices & Services → Audiobookshelf → ⋮ → **Delete**.
+Settings → Devices & Services → Audiobookshelf Plus → ⋮ → **Delete**.
 
 Deleting the entry closes any playback sessions it opened and stops the realtime
 connection. Two things it does **not** clean up, because they live on the Audiobookshelf

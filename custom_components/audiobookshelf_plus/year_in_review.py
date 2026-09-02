@@ -25,20 +25,20 @@ from homeassistant.core import (
     ServiceResponse,
     SupportsResponse,
 )
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from .api import AudiobookshelfRest, AudiobookshelfRestError
 from .const import (
-    CONF_LINKED_USERS,
+    CONF_CONFIG_ENTRY,
     DOMAIN,
     MAX_STATS_YEAR,
     MIN_STATS_YEAR,
     SERVICE_YEAR_IN_REVIEW,
 )
-from .playback import loaded_entry, resolve_user
+from .playback import resolve_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ YEAR_IN_REVIEW_SCHEMA = vol.Schema(
         vol.Optional(CONF_YEAR): vol.All(
             vol.Coerce(int), vol.Range(min=MIN_STATS_YEAR, max=MAX_STATS_YEAR)
         ),
+        vol.Optional(CONF_CONFIG_ENTRY): cv.string,
     }
 )
 
@@ -74,19 +75,13 @@ async def _async_year_in_review(
     hass: HomeAssistant, call: ServiceCall
 ) -> ServiceResponse:
     """Return one linked user's listening summary for a calendar year."""
-    entry = loaded_entry(hass)
-    coordinator = entry.runtime_data
-    linked = entry.options.get(CONF_LINKED_USERS, {})
-    if not linked:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="no_linked_users"
-        )
+    target = resolve_target(hass, call)
+    abs_user = target.user
 
     year = int(call.data.get(CONF_YEAR) or dt_util.now().year)
-    abs_user = resolve_user(call, linked)
     rest = AudiobookshelfRest(
         async_get_clientsession(hass),
-        coordinator.base_url,
+        target.entry.runtime_data.base_url,
         abs_user["api_key"],
         is_primary=False,
     )
@@ -100,10 +95,12 @@ async def _async_year_in_review(
             translation_placeholders={"error": str(err)},
         ) from err
 
-    return _shape(raw, abs_user["username"], year)
+    return _shape(raw, abs_user["username"], target.entry.title, year)
 
 
-def _shape(raw: dict[str, Any], username: str, year: int) -> dict[str, Any]:
+def _shape(
+    raw: dict[str, Any], username: str, server: str, year: int
+) -> dict[str, Any]:
     """Turn Audiobookshelf's payload into something a template can read.
 
     Seconds become hours, because nobody wants to divide by 3600 in Jinja. The
@@ -112,6 +109,7 @@ def _shape(raw: dict[str, Any], username: str, year: int) -> dict[str, Any]:
     """
     return {
         "user": username,
+        "server": server,
         "year": year,
         "books_finished": int(raw.get("numBooksFinished") or 0),
         "books_started": int(raw.get("numBooksListened") or 0),

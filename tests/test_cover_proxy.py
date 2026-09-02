@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from custom_components.audiobookshelf_plus.cover_proxy import (
     _SIGNED_CACHE,
     signed_cover_url,
@@ -37,12 +39,12 @@ async def test_signed_url_changes_when_the_cover_changes(
 async def test_signed_url_is_resigned_near_expiry(hass, init_integration) -> None:
     """The cache re-signs before the signature lapses, not after."""
     _SIGNED_CACHE.clear()
-    url = signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
-    raw = next(iter(_SIGNED_CACHE))
+    signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
+    key = next(iter(_SIGNED_CACHE))
     # Pretend the cached signature is about to expire.
-    _SIGNED_CACHE[raw] = (url, 0.0)
+    _SIGNED_CACHE[key] = replace(_SIGNED_CACHE[key], expires=0.0)
     fresh = signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
-    assert _SIGNED_CACHE[raw][1] > 0.0
+    assert _SIGNED_CACHE[key].expires > 0.0
     assert fresh.startswith("/api/audiobookshelf_plus/cover/")
 
 

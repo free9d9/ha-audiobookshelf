@@ -107,7 +107,7 @@ class AudiobookshelfConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(_server_id(url))
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="Audiobookshelf",
+                    title=_entry_title(url),
                     data={CONF_URL: url, CONF_API_KEY: user_input[CONF_API_KEY]},
                 )
 
@@ -191,6 +191,18 @@ class AudiobookshelfConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
             errors=errors,
         )
+
+
+def _entry_title(url: str) -> str:
+    """Name the entry so two servers can be told apart.
+
+    "Audiobookshelf Plus" alone reads fine until a second server is added, and
+    then the integrations page, the device list and the `config_entry` picker on
+    every action all show the same word twice. The host is the one thing that is
+    always different, so it goes in the title.
+    """
+    host = urlparse(url).hostname or url
+    return f"Audiobookshelf Plus ({host})"
 
 
 def _server_id(url: str) -> str:

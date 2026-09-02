@@ -81,6 +81,18 @@
     },
     "need_series_or_item": {
       "message": "Pass either a series or an item_id, not both and not neither."
+    },
+    "ambiguous_server": {
+      "message": "This could mean more than one Audiobookshelf server ({servers}). Add a config entry to the action to say which one."
+    },
+    "no_matching_server": {
+      "message": "None of the configured Audiobookshelf servers ({servers}) has a linked user matching this call. Pass a user, or add a config entry to the action to say which server to use."
+    },
+    "unknown_config_entry": {
+      "message": "{config_entry} is not an Audiobookshelf configuration entry."
+    },
+    "entry_not_loaded": {
+      "message": "{server} is not loaded. Check that the server is reachable."
     }
   },
   "issues": {
@@ -124,6 +136,10 @@
         "seek": {
           "name": "Resume at position",
           "description": "Seek to the saved position after playback starts. Turn off to start the track from the beginning."
+        },
+        "config_entry": {
+          "name": "Server",
+          "description": "Which Audiobookshelf server to use. Only needed when more than one is configured; with a single server this is worked out automatically."
         }
       }
     },
@@ -142,6 +158,10 @@
         "item_id": {
           "name": "Item ID",
           "description": "Delete progress on a single library item instead of a series."
+        },
+        "config_entry": {
+          "name": "Server",
+          "description": "Which Audiobookshelf server to use. Only needed when more than one is configured; with a single server this is worked out automatically."
         }
       }
     },
@@ -156,6 +176,10 @@
         "year": {
           "name": "Year",
           "description": "The calendar year to summarise. Defaults to this year."
+        },
+        "config_entry": {
+          "name": "Server",
+          "description": "Which Audiobookshelf server to use. Only needed when more than one is configured; with a single server this is worked out automatically."
         }
       }
     }

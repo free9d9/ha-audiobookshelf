@@ -4,6 +4,50 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0]
+
+### Added
+
+- **Actions can be pointed at a specific server.** `continue_listening`,
+  `remove_progress` and `get_year_in_review` each take an optional
+  `config_entry`, shown in the UI as a server picker. More than one
+  Audiobookshelf server has always been configurable (the unique id is
+  host:port), but the actions resolved through "the first loaded entry", so with
+  two servers a dashboard button could act on the wrong one. `remove_progress`
+  cannot be undone, which made that a real way to delete the wrong person's
+  place in a book.
+
+  With no `config_entry` given, an action now asks every configured server who
+  the call is for and proceeds only when exactly one of them has a matching
+  linked user, which is what happens with a single server and usually what
+  happens with two. Where more than one matches, it raises and asks for the
+  server rather than choosing. Nothing changes for a single-server setup.
+- `remove_progress` and `get_year_in_review` name the server they acted on in
+  their response, as `server`.
+
+### Changed
+
+- The integration is called **Audiobookshelf Plus** everywhere, matching
+  `hacs.json`. It previously presented as "Audiobookshelf" in the manifest and
+  the setup docs, which is the name wolffshots/hass-audiobookshelf already uses
+  in HACS, so the two were hard to tell apart when browsing or on the
+  integrations page.
+- New config entries are titled `Audiobookshelf Plus (<host>)`. Existing entries
+  keep the title they have; rename one from its ⋮ menu if you want the host in
+  it. Device and entity names are unchanged.
+
+### Fixed
+
+- Unloading or reloading one server closed the playback sessions running against
+  every other one. Sessions live in a single map keyed by speaker, and teardown
+  walked all of it, so a listener mid-chapter on server B was hung up on because
+  server A reloaded. Teardown is now scoped to the entry being unloaded.
+- The signed cover-URL cache grew without bound. It was keyed by the full URL,
+  which carries the item's `updatedAt`, so every edit to an item added a row and
+  no row was ever removed. It is now keyed per item, so an edit replaces the row
+  it supersedes; lapsed rows are swept when a new URL is signed, and an entry's
+  rows are dropped when it unloads.
+
 ## [0.10.1]
 
 ### Fixed

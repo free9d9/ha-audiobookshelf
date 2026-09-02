@@ -23,6 +23,11 @@ continue_listening:
       default: true
       selector:
         boolean:
+    config_entry:
+      required: false
+      selector:
+        config_entry:
+          integration: audiobookshelf_plus
 
 remove_progress:
   fields:
@@ -41,6 +46,11 @@ remove_progress:
       example: 7a46ad79-85af-43c9-9e81-1472909463e0
       selector:
         text:
+    config_entry:
+      required: false
+      selector:
+        config_entry:
+          integration: audiobookshelf_plus
 
 get_year_in_review:
   fields:
@@ -57,3 +67,8 @@ get_year_in_review:
           min: 2000
           max: 9999
           mode: box
+    config_entry:
+      required: false
+      selector:
+        config_entry:
+          integration: audiobookshelf_plus

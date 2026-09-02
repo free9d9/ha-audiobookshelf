@@ -24,7 +24,11 @@ rules:
     comment: Socket subscriptions live on the coordinator, torn down in async_shutdown.
   action-setup:
     status: done
-    comment: continue_listening is registered in async_setup, not async_setup_entry.
+    comment: >-
+      The three actions are registered in async_setup, not async_setup_entry,
+      and each resolves its own config entry: an optional config_entry field
+      selects the server, and with none given the action only proceeds when
+      exactly one loaded server can name the listener.
   appropriate-polling:
     status: done
     comment: >-
@@ -55,7 +59,11 @@ rules:
 
   # ---------------- Silver ----------------
   integration-owner: done
-  config-entry-unloading: done
+  config-entry-unloading:
+    status: done
+    comment: >-
+      Unloading closes only the playback sessions that entry opened, and drops
+      its signed cover URLs, so one server unloading leaves another alone.
   reauthentication-flow:
     status: done
     comment: >-

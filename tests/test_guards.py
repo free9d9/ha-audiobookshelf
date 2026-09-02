@@ -138,6 +138,7 @@ def _active(**kwargs) -> ActiveSession:
         "session_id": "sess-1",
         "rest": rest,
         "entity_id": SPEAKER,
+        "entry_id": "entry-1",
         "username": "Alice",
         "duration": 3600.0,
         "track_offset": 0.0,
