@@ -308,15 +308,21 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             on_items_added=self._on_library_changed,
             on_items_updated=self._on_library_changed,
         )
-        # aioaudiobookshelf has no callback hook for user_stream_update, so hang
-        # one directly off the underlying socketio client. Register before
-        # init_client() connects.
-        self._socket.client.on("user_stream_update", self._on_stream_update)
-        # Library scans surface as generic tasks. There is no scan_start or
-        # scan_complete event, despite what the docs' contents page implies.
-        self._socket.client.on("task_started", self._on_task_started)
-        self._socket.client.on("task_finished", self._on_task_finished)
-        await self._socket.init_client()
+        try:
+            await self._socket.init_client()
+        finally:
+            # These handlers want the raw payload, so they hang directly off the
+            # socketio client rather than the library's typed callbacks. They
+            # MUST go on after init_client(): it registers its own dispatcher
+            # for all three events, and socketio keeps one handler per event, so
+            # registering first meant ours were silently replaced and playback
+            # starts and library scans never arrived in real time. Handlers
+            # outlive reconnects, so this runs once.
+            self._socket.client.on("user_stream_update", self._on_stream_update)
+            # Library scans surface as generic tasks. There is no scan_start or
+            # scan_complete event, despite what the docs' contents page implies.
+            self._socket.client.on("task_started", self._on_task_started)
+            self._socket.client.on("task_finished", self._on_task_finished)
 
     async def async_shutdown(self) -> None:
         """Close the socket on unload."""

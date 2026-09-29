@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1]
+
+### Fixed
+
+- **Real-time playback and scan updates were never arriving.** Since the move
+  to aioaudiobookshelf-plus in 0.9.0, the library's `init_client()` registered
+  its own handlers for `user_stream_update`, `task_started` and `task_finished`
+  after ours, and Socket.IO keeps only one handler per event. So a new
+  listening session only showed up on the next poll (up to five minutes), the
+  per-library `scanning` sensors never turned on, and
+  `audiobookshelf_plus_scan_completed` never fired. Our handlers are now
+  registered after the library's, and a test runs the library's real
+  `init_client()` so this cannot come back unseen. This is the likely cause of
+  #5.
+- The server update entity now has a title, "Audiobookshelf server". Settings >
+  Updates heads each row with the device name and shows the title beside the
+  new version, so with no title a new Audiobookshelf release appeared as
+  "Audiobookshelf Plus 2.37.0" and read like an update to this integration. It
+  still has no install button; upgrading the server stays your call.
+
 ## [0.11.0]
 
 ### Added

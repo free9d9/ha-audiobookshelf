@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aioaudiobookshelf_plus.client import SocketClient
+from aioaudiobookshelf_plus.client.session_configuration import SessionConfiguration
 from aiohttp import ClientError
 from homeassistant.components.update import SERVICE_INSTALL, UpdateEntityFeature
 from homeassistant.const import ATTR_ENTITY_ID
@@ -108,6 +111,13 @@ async def test_update_entity_reports_both_versions(hass, init_integration) -> No
     assert state.state == "on"  # an update is available
 
 
+async def test_update_entity_names_the_server_not_the_integration(
+    hass, init_integration
+) -> None:
+    """The Updates list must not read as an update to Audiobookshelf Plus itself."""
+    assert hass.states.get(UPDATE).attributes["title"] == "Audiobookshelf server"
+
+
 async def test_update_entity_is_off_when_current(
     hass, mock_config_entry, mock_abs_client, mock_rest, mock_release
 ) -> None:
@@ -179,6 +189,38 @@ async def test_a_failed_check_keeps_the_last_answer(
 
 
 # ------------------------------------------------------------------- scan state
+
+
+async def test_raw_socket_handlers_survive_the_librarys_init_client(
+    hass, mock_config_entry, mock_abs_client, mock_rest, mock_release
+) -> None:
+    """Run the REAL init_client, with only the network connect stubbed.
+
+    aioaudiobookshelf-plus registers its own dispatcher for user_stream_update,
+    task_started and task_finished inside init_client(), and socketio keeps one
+    handler per event. Registering ours first let the library replace them, and
+    the mocked init_client everywhere else could never show it.
+    """
+    real = SocketClient(
+        session_config=SessionConfiguration(
+            session=MagicMock(), url="http://abs.local", token="socket-token"
+        )
+    )
+    real.client.connect = AsyncMock()
+    socket = mock_abs_client.socket
+    socket.init_client = real.init_client
+    socket.client = real.client
+
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    coordinator = mock_config_entry.runtime_data
+    handlers = real.client.handlers["/"]
+    assert handlers["user_stream_update"] == coordinator._on_stream_update
+    assert handlers["task_started"] == coordinator._on_task_started
+    assert handlers["task_finished"] == coordinator._on_task_finished
+    real.client.connect.assert_awaited_once()
 
 
 async def test_scanning_sensor_follows_the_task_events(

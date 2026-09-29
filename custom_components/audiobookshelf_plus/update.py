@@ -32,6 +32,11 @@ class AudiobookshelfUpdate(AudiobookshelfEntity, UpdateEntity):
 
     _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES
     _attr_translation_key = "server"
+    # Settings > Updates heads each row with the DEVICE name ("Audiobookshelf
+    # Plus") and puts the title beside the version. With no title the row reads
+    # "Audiobookshelf Plus 2.37.0", which looks like an update to this
+    # integration rather than to the server it watches.
+    _attr_title = "Audiobookshelf server"
 
     def __init__(self, coordinator: AudiobookshelfCoordinator) -> None:
         """Initialise the entity."""
