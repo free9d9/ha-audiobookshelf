@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import patch
 
 import pytest
 from homeassistant.components.media_player import MediaPlayerState, MediaType
-from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
+from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON, Platform
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -326,3 +327,29 @@ async def test_unload(hass, init_integration, mock_abs_client) -> None:
         hass.states.get("sensor.audiobooks_recently_added").state == STATE_UNAVAILABLE
     )
     mock_abs_client.socket.logout.assert_awaited_once()
+
+
+async def test_child_devices_hang_off_the_server_device(
+    hass, mock_config_entry, mock_abs_client, mock_rest, caplog
+) -> None:
+    """Library and user devices must be linked to the server device.
+
+    The server device used to come into being with the first server-level
+    entity. Platforms load in parallel, and one holding only per-library
+    entities (the scan buttons) could reference it before it existed; HA logs
+    that and drops the link. Loading the button platform alone makes that
+    ordering certain instead of a race.
+    """
+    with patch("custom_components.audiobookshelf_plus.PLATFORMS", [Platform.BUTTON]):
+        mock_config_entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    registry = dr.async_get(hass)
+    entry_id = mock_config_entry.entry_id
+    server = registry.async_get_device(identifiers={(DOMAIN, entry_id)})
+    assert server is not None
+    child = registry.async_get_device(identifiers={(DOMAIN, f"{entry_id}_lib-books")})
+    assert child is not None
+    assert child.via_device_id == server.id
+    assert "non existing `via_device`" not in caplog.text

@@ -12,6 +12,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
 from .cover_proxy import AudiobookshelfCoverView, release_signed_urls
+from .entity import server_device_info
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
 from .year_in_review import async_setup_year_in_review
@@ -83,6 +84,12 @@ async def async_setup_entry(
         hass.http.register_view(AudiobookshelfCoverView(hass))
         hass.data[_VIEW_REGISTERED] = True
 
+    # Library and user devices name this one as their via_device. Platforms load
+    # in parallel, so it must exist before any of them does, or HA drops the
+    # link and logs a non-existing via_device.
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, **server_device_info(coordinator)
+    )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _async_prune_devices(hass, entry)

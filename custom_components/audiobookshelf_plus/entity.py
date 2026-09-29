@@ -21,6 +21,17 @@ from .coordinator import (
 )
 
 
+def server_device_info(coordinator: AudiobookshelfCoordinator) -> DeviceInfo:
+    """Describe the server device that every library and user device hangs off."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, coordinator.entry_id)},
+        entry_type=DeviceEntryType.SERVICE,
+        manufacturer="Audiobookshelf",
+        name="Audiobookshelf Plus",
+        configuration_url=coordinator.base_url,
+    )
+
+
 @callback
 def async_setup_dynamic_entities(
     coordinator: AudiobookshelfCoordinator,
@@ -59,15 +70,8 @@ class AudiobookshelfEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
     def __init__(self, coordinator: AudiobookshelfCoordinator, key: str) -> None:
         """Initialise the entity."""
         super().__init__(coordinator)
-        entry_id = coordinator.entry_id
-        self._attr_unique_id = f"{entry_id}_{key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry_id)},
-            entry_type=DeviceEntryType.SERVICE,
-            manufacturer="Audiobookshelf",
-            name="Audiobookshelf Plus",
-            configuration_url=coordinator.base_url,
-        )
+        self._attr_unique_id = f"{coordinator.entry_id}_{key}"
+        self._attr_device_info = server_device_info(coordinator)
 
 
 class AudiobookshelfLibraryEntity(CoordinatorEntity[AudiobookshelfCoordinator]):

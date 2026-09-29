@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1]
+
+### Fixed
+
+- **Library and user devices lost their link to the server device.** The
+  server device was only created along with the first server-level entity, but
+  Home Assistant sets platforms up in parallel, so the per-library scan buttons
+  and similar could point at it before it existed. Home Assistant logged
+  "non existing `via_device`" and dropped the link, so libraries and users no
+  longer appeared under Audiobookshelf Plus on the device page. The server
+  device is now created before any platform loads; existing links are restored
+  on the next start.
+
 ## [0.12.0]
 
 Verified against Audiobookshelf 2.37.0. Every server change from 2.35.1 through
