@@ -90,11 +90,19 @@ class AudiobookshelfRest:
     async def async_get_me(self) -> dict[str, Any]:
         """Return the user behind the API key.
 
-        Its ``token`` field is the only thing Audiobookshelf's Socket.IO
-        handshake accepts -- API keys are rejected there.
+        Its ``token`` field is the legacy socket token. Audiobookshelf before
+        2.37.0 rejects API keys on the Socket.IO handshake and accepts only this.
         """
         me: dict[str, Any] = await self._request("GET", "/api/me")
         return me
+
+    async def async_authorize(self) -> dict[str, Any]:
+        """Return the user and server settings, as the web app gets them on login.
+
+        From 2.36.0 ``serverSettings.timeZone`` names the server host's zone.
+        """
+        payload = await self._request("POST", "/api/authorize")
+        return payload if isinstance(payload, dict) else {}
 
     async def async_get_libraries_with_stats(self) -> list[dict[str, Any]]:
         """Libraries, each with a `stats` object."""

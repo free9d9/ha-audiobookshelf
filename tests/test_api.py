@@ -28,7 +28,7 @@ async def test_base_url_is_normalised(hass) -> None:
 
 
 async def test_get_me(hass, aioclient_mock) -> None:
-    """The socket token comes from here, because the API key is rejected on it."""
+    """The legacy socket token, for servers that refuse an API key on the socket."""
     aioclient_mock.get(f"{URL}/api/me", json={"token": "socket-token"})
     assert (await _rest(hass).async_get_me())["token"] == "socket-token"
 
@@ -258,3 +258,18 @@ async def test_issue_count_unexpected_shape(hass, aioclient_mock) -> None:
 async def test_issue_count_without_a_total(hass, aioclient_mock) -> None:
     aioclient_mock.get(f"{URL}/api/libraries/lib-1/items", json={"results": []})
     assert await _rest(hass).async_get_issue_count("lib-1") == 0
+
+
+async def test_authorize(hass, aioclient_mock) -> None:
+    """The server's own zone rides along with its settings (2.36.0+)."""
+    aioclient_mock.post(
+        f"{URL}/api/authorize",
+        json={"serverSettings": {"timeZone": "Pacific/Honolulu"}},
+    )
+    payload = await _rest(hass).async_authorize()
+    assert payload["serverSettings"]["timeZone"] == "Pacific/Honolulu"
+
+
+async def test_authorize_unexpected_shape(hass, aioclient_mock) -> None:
+    aioclient_mock.post(f"{URL}/api/authorize", json=[])
+    assert await _rest(hass).async_authorize() == {}

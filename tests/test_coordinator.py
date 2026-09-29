@@ -53,7 +53,7 @@ async def test_recently_added_entry_shape(hass, init_integration) -> None:
 async def test_socket_token_is_bootstrapped_from_the_api_key(
     hass, init_integration, mock_rest
 ) -> None:
-    """The API key is rejected on the socket, so /api/me hands us a usable token."""
+    """Before 2.37.0 the socket refuses API keys, so /api/me hands us a token."""
     mock_rest.async_get_me.assert_awaited()
 
 

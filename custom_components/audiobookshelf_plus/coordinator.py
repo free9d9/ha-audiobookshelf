@@ -10,12 +10,14 @@ import time
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import aioaudiobookshelf_plus as absapi
 from aioaudiobookshelf_plus.client import AdminClient, SocketClient
 from aioaudiobookshelf_plus.client.session_configuration import SessionConfiguration
 from aioaudiobookshelf_plus.exceptions import LoginError, TokenIsMissingError
 from aiohttp import ClientError, ClientSession
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -33,6 +35,7 @@ from .const import (
     EVENT_PLAYBACK_STOPPED,
     EVENT_SCAN_COMPLETED,
     ISSUE_KEY_EXPIRING,
+    ISSUE_TIMEZONE_MISMATCH,
     KEY_EXPIRY_WARN_DAYS,
     NEW_ITEM_DAYS,
     PARSE_DICT_AUDIOBOOK,
@@ -43,6 +46,7 @@ from .const import (
     SCAN_INTERVAL,
     SCAN_INTERVAL_LISTENING,
     SESSION_FRESH_SECONDS,
+    SOCKET_API_KEY_MIN_VERSION,
     STATS_INTERVAL,
     TASK_LIBRARY_SCAN,
 )
@@ -169,12 +173,15 @@ class AudiobookshelfData:
 class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
     """Push-first coordinator.
 
-    Audiobookshelf accepts an API key on its REST API but rejects it on the
-    Socket.IO handshake. GET /api/me, authenticated with the API key, returns a
-    user token that the socket does accept -- so the realtime connection is
-    bootstrapped from the same single secret the user typed. No password needed.
+    From 2.37.0 Audiobookshelf accepts the API key on the Socket.IO handshake
+    too, so the socket authenticates with the same single secret the user typed,
+    and revoking that key closes the realtime connection as well. Older servers
+    reject API keys there; for them GET /api/me, authenticated with the key,
+    returns a legacy user token that the socket does accept. No password either
+    way.
 
-    What the socket does and does not give us (verified against 2.35.1 source):
+    What the socket does and does not give us (verified against 2.35.1 source,
+    rechecked against 2.37.0):
 
       * ``item_added`` / ``items_added`` / ``item_updated`` / ``item_removed``
         -> everyone with access. Drives the recently-added feeds.
@@ -215,11 +222,17 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         self._release: ReleaseInfo | None = None
         self._release_checked: float = 0.0
         self._scanning: set[str] = set()
+        # The transport can be up while Audiobookshelf refuses to push anything
+        # (it answers a bad token with `auth_failed` and leaves the socket
+        # open), so "connected" also needs the server's `init`.
+        self._socket_authed: bool = False
 
     @property
     def connected(self) -> bool:
-        """Whether the realtime socket is up."""
-        return bool(self._socket and self._socket.client.connected)
+        """Whether the realtime socket is up AND authenticated."""
+        return bool(
+            self._socket and self._socket.client.connected and self._socket_authed
+        )
 
     # ------------------------------------------------------------------ setup
 
@@ -244,7 +257,41 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             raise UpdateFailed(f"Cannot reach Audiobookshelf: {err}") from err
 
         self._async_check_key_expiry()
+        await self._async_check_timezone()
         await self._async_connect_socket(session)
+
+    async def _async_check_timezone(self) -> None:
+        """Raise a repair issue when Audiobookshelf keeps a different clock.
+
+        Listening statistics arrive bucketed by Audiobookshelf's calendar day
+        and are summed against Home Assistant's. If the two zones differ,
+        "today" quietly includes part of yesterday. The server reports its zone
+        from 2.36.0; older servers do not, and get the benefit of the doubt.
+        """
+        assert self.rest is not None
+        issue_id = f"{ISSUE_TIMEZONE_MISMATCH}_{self.entry_id}"
+        try:
+            abs_zone = _server_time_zone(await self.rest.async_authorize())
+        except AudiobookshelfRestError as err:
+            _LOGGER.debug("Could not read the server's time zone: %s", err)
+            return
+        ha_zone = self.hass.config.time_zone
+        if abs_zone is None or _same_clock(abs_zone, ha_zone):
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=ISSUE_TIMEZONE_MISMATCH,
+            translation_placeholders={
+                "url": self.base_url,
+                "abs_zone": abs_zone,
+                "ha_zone": ha_zone,
+            },
+        )
 
     def _async_check_key_expiry(self) -> None:
         """Raise a repair issue before an expiring API key actually lapses.
@@ -281,14 +328,30 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             },
         )
 
-    async def _async_connect_socket(self, session: ClientSession) -> None:
-        """Open the Socket.IO connection using a token bootstrapped from /api/me."""
+    async def _async_socket_token(self) -> str | None:
+        """Pick the token to authenticate the socket with.
+
+        The API key itself where the server takes it (2.37.0+), else the legacy
+        token from /api/me, which Audiobookshelf marks deprecated.
+        """
         assert self.rest is not None
         try:
-            socket_token = (await self.rest.async_get_me()).get("token")
+            version = (await self.rest.async_get_status()).get("serverVersion")
+        except AudiobookshelfRestError as err:
+            _LOGGER.debug("Could not read the server version: %s", err)
+            version = None
+        if _at_least(version, SOCKET_API_KEY_MIN_VERSION):
+            return self._api_key
+        try:
+            token = (await self.rest.async_get_me()).get("token")
         except AudiobookshelfRestError as err:
             _LOGGER.debug("Could not fetch realtime token: %s", err)
-            socket_token = None
+            return None
+        return str(token) if token else None
+
+    async def _async_connect_socket(self, session: ClientSession) -> None:
+        """Open the Socket.IO connection."""
+        socket_token = await self._async_socket_token()
 
         if not socket_token:
             _LOGGER.warning(
@@ -308,6 +371,12 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             on_items_added=self._on_library_changed,
             on_items_updated=self._on_library_changed,
         )
+        # Connection-state events the library leaves alone. These go on BEFORE
+        # init_client(): the server answers the auth sent during connect(), so
+        # `init` or `auth_failed` can arrive before it returns.
+        self._socket.client.on("init", self._on_socket_init)
+        self._socket.client.on("auth_failed", self._on_auth_failed)
+        self._socket.client.on("disconnect", self._on_socket_disconnect)
         try:
             await self._socket.init_client()
         finally:
@@ -332,6 +401,40 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         await super().async_shutdown()
 
     # ----------------------------------------------------------- push handlers
+
+    def _push_connected(self) -> None:
+        """Show a change in realtime state now, not at the next poll."""
+        if self.data is not None and self.data.connected != self.connected:
+            self.async_set_updated_data(replace(self.data, connected=self.connected))
+
+    async def _on_socket_init(self, _payload: Any = None) -> None:
+        """Audiobookshelf accepted our token; events flow from here."""
+        self._socket_authed = True
+        self._push_connected()
+
+    async def _on_auth_failed(self, payload: Any = None) -> None:
+        """Audiobookshelf refused the socket's token.
+
+        The socket stays open but receives nothing, so polling carries on alone.
+        If the API key itself is dead the next poll gets a 401, which raises
+        ConfigEntryAuthFailed and starts reauthentication, so ask for that poll
+        now rather than in five minutes.
+        """
+        self._socket_authed = False
+        reason = payload.get("message") if isinstance(payload, dict) else None
+        _LOGGER.warning(
+            "Audiobookshelf refused the realtime connection (%s); "
+            "falling back to polling every %s",
+            reason or "no reason given",
+            SCAN_INTERVAL,
+        )
+        self._push_connected()
+        await self.async_request_refresh()
+
+    async def _on_socket_disconnect(self, *_: Any) -> None:
+        """Mark realtime down; socketio reconnects and re-auths by itself."""
+        self._socket_authed = False
+        self._push_connected()
 
     async def _on_library_changed(self, _event: Any) -> None:
         """Any library mutation triggers a refresh, coalesced by the debouncer."""
@@ -710,6 +813,41 @@ def _scan_library_id(payload: Any) -> str | None:
         return None
     library_id = (payload.get("data") or {}).get("libraryId")
     return str(library_id) if library_id else None
+
+
+def _at_least(version: Any, minimum: str) -> bool:
+    """Whether a server version string is at least `minimum`."""
+    if not version:
+        return False
+    try:
+        return bool(AwesomeVersion(str(version)) >= AwesomeVersion(minimum))
+    except AwesomeVersionException:
+        return False
+
+
+def _server_time_zone(authorize: dict[str, Any]) -> str | None:
+    """Return the IANA zone Audiobookshelf reports for its host, if any."""
+    zone = (authorize.get("serverSettings") or {}).get("timeZone")
+    return str(zone) if zone else None
+
+
+def _same_clock(zone_a: str, zone_b: str) -> bool:
+    """Whether two IANA zones keep the same wall clock, now and in six months.
+
+    Names differ for identical clocks (US/Hawaii and Pacific/Honolulu), and two
+    zones can agree in winter and split in summer, hence two sample points.
+    """
+    if zone_a == zone_b:
+        return True
+    try:
+        a, b = ZoneInfo(zone_a), ZoneInfo(zone_b)
+    except (ZoneInfoNotFoundError, ValueError):
+        return True  # an unknown name is not evidence of a problem
+    now = datetime.now(UTC)
+    return all(
+        when.astimezone(a).utcoffset() == when.astimezone(b).utcoffset()
+        for when in (now, now + timedelta(days=182))
+    )
 
 
 def _parse_stats(raw: dict[str, Any], today: date) -> ListeningStats:

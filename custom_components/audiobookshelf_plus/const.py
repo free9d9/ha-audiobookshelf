@@ -70,6 +70,14 @@ STATS_INTERVAL: Final = timedelta(minutes=15)
 KEY_EXPIRY_WARN_DAYS: Final = 14
 ISSUE_KEY_EXPIRING: Final = "api_key_expiring"
 
+# Listening stats arrive bucketed by Audiobookshelf's calendar day. Warn when
+# that is not Home Assistant's calendar day.
+ISSUE_TIMEZONE_MISMATCH: Final = "timezone_mismatch"
+
+# The first Audiobookshelf release that accepts an API key on the Socket.IO
+# handshake (advplyr/audiobookshelf#4974). Older servers need the legacy token.
+SOCKET_API_KEY_MIN_VERSION: Final = "2.37.0"
+
 # How often to push a playing speaker's position back to Audiobookshelf. The
 # official clients sync at roughly this cadence.
 PROGRESS_SYNC_INTERVAL: Final = timedelta(seconds=20)

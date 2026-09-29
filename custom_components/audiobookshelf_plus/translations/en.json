@@ -99,6 +99,10 @@
     "api_key_expiring": {
       "title": "Your Audiobookshelf API key is about to expire",
       "description": "The API key Home Assistant uses for {url} expires on {expires}. When it does, this integration will stop working until you enter a new one.\n\nCreate a replacement in Audiobookshelf under Settings → API Keys, leaving the expiry blank so it never lapses, then reconfigure the integration with the new key."
+    },
+    "timezone_mismatch": {
+      "title": "Audiobookshelf keeps a different clock from Home Assistant",
+      "description": "The Audiobookshelf server at {url} runs in {abs_zone}, but Home Assistant runs in {ha_zone}. Audiobookshelf buckets listening time by its own calendar day, so the Today, This week and This month listening sensors will count some time on the wrong day.\n\nSet the Audiobookshelf container's TZ environment variable to {ha_zone} and restart it. This warning clears the next time the integration loads."
     }
   },
   "options": {

@@ -69,7 +69,7 @@ all-time sensor also carries an `hours_by_weekday` breakdown.
 - `sensor.audiobookshelf_plus_users_online` - people with an app or the web UI open. Different
   again: online is not listening.
 - `sensor.audiobookshelf_plus_users` and `sensor.audiobookshelf_plus_libraries` - counts, with names.
-- `binary_sensor.audiobookshelf_plus_realtime_updates` - whether the live connection is up.
+- `binary_sensor.audiobookshelf_plus_realtime_updates` - whether the live connection is up and Audiobookshelf has accepted it.
   When it's off, the integration is still working; updates just fall back to the
   five-minute poll.
 - `update.audiobookshelf_plus_server` - the version you run against the newest release, with
@@ -172,9 +172,11 @@ happens, Home Assistant will prompt you to re-enter it rather than silently goin
 
 Use an **admin** key if you want server-wide sensors.
 
-That single key is all the integration ever asks for. Audiobookshelf rejects API keys on
-its Socket.IO handshake, so the realtime connection is bootstrapped by trading the key for
-a user token via `/api/me`. You never have to hand Home Assistant a password.
+That single key is all the integration ever asks for, and you never have to hand Home
+Assistant a password. On Audiobookshelf 2.37.0 and later the realtime connection signs in
+with the key itself, so revoking the key cuts off realtime updates too. Older servers
+reject API keys on their Socket.IO handshake, so there the key is traded for a user token
+via `/api/me` instead.
 
 ## How data updates
 
@@ -188,8 +190,8 @@ Push, with a poll as backstop:
   ([advplyr/audiobookshelf#1857](https://github.com/advplyr/audiobookshelf/issues/1857)).
 - While someone is listening the fallback poll tightens to 30 seconds, because
   Audiobookshelf emits **nothing at all when a client pauses**.
-- If the socket drops, the REST poll keeps things fresh and
-  `binary_sensor.audiobookshelf_plus_realtime_updates` turns off.
+- If the socket drops, or the server refuses its sign-in, the REST poll keeps things fresh
+  and `binary_sensor.audiobookshelf_plus_realtime_updates` turns off straight away.
 
 Measured on a 2.35.1 server: a metadata change reaches Home Assistant in ~5.8 s; pressing
 play shows up in ~0.1 s; stopping resolves in ~6.9 s.
@@ -497,7 +499,9 @@ reload the page. If it persists, check the entry state under Settings → Device
 The Socket.IO connection is down and the integration has fallen back to polling every five
 minutes. Everything still works, just slower. Usually the server restarted; it reconnects
 on its own. If it stays off, check that nothing between Home Assistant and Audiobookshelf
-is stripping WebSocket upgrades - a reverse proxy is the usual culprit.
+is stripping WebSocket upgrades - a reverse proxy is the usual culprit. The log says so
+when Audiobookshelf itself refused the connection, with its reason ("Invalid API key",
+"API key expired"); a dead key also prompts you to re-enter it.
 
 **Setup fails with "Audiobookshelf rejected that API key."**
 The key was revoked, expired, or belongs to a deleted user. Create a new one under

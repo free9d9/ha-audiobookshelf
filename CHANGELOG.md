@@ -4,7 +4,34 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.1]
+## [0.12.0]
+
+Verified against Audiobookshelf 2.37.0. Every server change from 2.35.1 through
+2.37.0 was checked against the endpoints, socket events and auth this
+integration uses; none of them breaks anything.
+
+### Added
+
+- **The realtime connection signs in with your API key on Audiobookshelf 2.37.0
+  and later.** Older servers refused API keys on the Socket.IO handshake, so the
+  key was traded for a legacy user token from `/api/me`, which Audiobookshelf
+  now marks deprecated. From 2.37.0 the key itself is used, so revoking the key
+  cuts off realtime updates too. Older servers keep the `/api/me` route.
+- **A repair issue when Audiobookshelf and Home Assistant keep different
+  clocks.** Audiobookshelf buckets listening time by its own calendar day, so a
+  server left on the container default of UTC puts evening listening on the
+  wrong day in the Today, This week and This month sensors. Audiobookshelf has
+  reported its zone since 2.36.0; older servers are not checked.
+
+### Changed
+
+- **Realtime updates now means the server accepted us, not just that a socket
+  is open.** Audiobookshelf answers a bad token with `auth_failed` and leaves
+  the connection open, so the sensor used to read on while nothing was being
+  delivered. It now turns on at the server's `init`, and turns off the moment
+  the server refuses or the connection drops, rather than at the next poll. A
+  refusal is logged with Audiobookshelf's reason, and triggers an immediate poll
+  so a revoked key goes straight to the re-authentication prompt.
 
 ### Fixed
 

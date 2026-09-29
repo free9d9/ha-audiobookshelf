@@ -131,7 +131,14 @@ def mock_abs_client() -> Generator[MagicMock]:
 
     socket = MagicMock()
     socket.client.connected = True
-    socket.init_client = AsyncMock()
+
+    async def _init_client() -> None:
+        # A real server answers the socket's auth with `init`.
+        for call in socket.client.on.call_args_list:
+            if call.args[0] == "init":
+                await call.args[1]({})
+
+    socket.init_client = AsyncMock(side_effect=_init_client)
     socket.logout = AsyncMock()
     socket.set_item_callbacks = MagicMock()
 
@@ -154,6 +161,8 @@ def mock_rest() -> Generator[MagicMock]:
     """Patch our thin REST layer for the endpoints aioaudiobookshelf lacks."""
     rest = MagicMock()
     rest.async_get_me = AsyncMock(return_value={"token": "socket-token"})
+    # No timeZone: a pre-2.36.0 server, which never raises the mismatch issue.
+    rest.async_authorize = AsyncMock(return_value={"serverSettings": {}})
     rest.async_get_libraries_with_stats = AsyncMock(
         return_value=[
             _library("lib-books", "Audiobooks"),
