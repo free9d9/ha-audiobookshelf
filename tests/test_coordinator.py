@@ -13,8 +13,6 @@ from custom_components.audiobookshelf_plus.const import (
     DOMAIN,
     EVENT_PLAYBACK_STARTED,
     EVENT_PLAYBACK_STOPPED,
-    SCAN_INTERVAL,
-    SCAN_INTERVAL_LISTENING,
 )
 from custom_components.audiobookshelf_plus.coordinator import _api_key_expiry
 
@@ -86,24 +84,6 @@ async def test_stale_open_sessions_are_not_live(
     assert data.users["u1"].session is not None
     assert data.users["u1"].session.is_live is False
     assert data.listening_now == []
-
-
-async def test_live_session_shortens_the_poll_interval(
-    hass, mock_config_entry, mock_abs_client, mock_rest
-) -> None:
-    """Pause emits nothing, so we poll faster while something plays."""
-    mock_rest.async_get_open_sessions.return_value = [open_session(user_id="u1")]
-    mock_config_entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    coordinator = mock_config_entry.runtime_data
-    assert coordinator.data.listening_now[0].username == "Alice"
-    assert coordinator.update_interval == SCAN_INTERVAL_LISTENING
-
-    mock_rest.async_get_open_sessions.return_value = []
-    await coordinator.async_refresh()
-    assert coordinator.update_interval == SCAN_INTERVAL
 
 
 async def test_stream_update_starts_playback_instantly(hass, init_integration) -> None:

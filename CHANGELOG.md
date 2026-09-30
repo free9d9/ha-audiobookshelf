@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.2]
+
+### Fixed
+
+- **Pause and resume now show within seconds, not minutes (#5).**
+  Audiobookshelf sends an admin nothing when a client pauses or resumes, so a
+  resume waited for the five-minute poll and a pause took up to two minutes to
+  appear. Playback state is now polled on its own every 15 seconds, from
+  `/api/sessions/open` alone (the server answers it from memory), and entities
+  are written only when a session or its playing/paused standing changes. A
+  resume shows within about 15 seconds and a pause within about a minute. The
+  full poll of libraries and users stays at five minutes, and constant
+  listening can no longer postpone it.
+- A session now counts as playing for 45 seconds after its last sync, down
+  from 90. Clients sync every 10 seconds (web) to 20 seconds (iOS, measured on
+  a live server), so that is two missed syncs.
+- **No more `via_device` deprecation warning on Home Assistant 2026.9+.**
+  Library and user devices now link to the server device with
+  `via_device_id`, which Home Assistant 2026.8 introduced; `via_device` stops
+  working in 2027.8. Older releases keep using `via_device`. Tests now run on
+  Home Assistant 2026.9.4, which is how this slipped through before.
+
 ## [0.12.1]
 
 ### Fixed

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -309,7 +310,9 @@ async def test_manual_device_removal_only_when_gone(hass, init_integration) -> N
     )
     assert not await async_remove_config_entry_device(hass, init_integration, live)
 
-    ghost = dr.DeviceEntry(identifiers={(DOMAIN, "nonexistent")})
+    # Only the identifiers are consulted. A stand-in keeps this independent of
+    # DeviceEntry's constructor, which changed shape in Home Assistant 2026.9.
+    ghost = SimpleNamespace(identifiers={(DOMAIN, "nonexistent")})
     assert await async_remove_config_entry_device(hass, init_integration, ghost)
 
 
@@ -329,27 +332,54 @@ async def test_unload(hass, init_integration, mock_abs_client) -> None:
     mock_abs_client.socket.logout.assert_awaited_once()
 
 
+def _device(hass, entry_id: str, identifier: str) -> dr.DeviceEntry:
+    """Find this entry's device by identifier, on any Home Assistant version."""
+    registry = dr.async_get(hass)
+    return next(
+        d
+        for d in dr.async_entries_for_config_entry(registry, entry_id)
+        if (DOMAIN, identifier) in d.identifiers
+    )
+
+
+async def _setup_buttons_only(hass, entry) -> None:
+    """Load only the button platform: per-library entities, no server ones.
+
+    Platforms load in parallel, so this makes the ordering that used to break
+    the device links certain instead of a race.
+    """
+    with patch("custom_components.audiobookshelf_plus.PLATFORMS", [Platform.BUTTON]):
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+
 async def test_child_devices_hang_off_the_server_device(
     hass, mock_config_entry, mock_abs_client, mock_rest, caplog
 ) -> None:
-    """Library and user devices must be linked to the server device.
+    """Library and user devices link to the server device, without warnings.
 
-    The server device used to come into being with the first server-level
-    entity. Platforms load in parallel, and one holding only per-library
-    entities (the scan buttons) could reference it before it existed; HA logs
-    that and drops the link. Loading the button platform alone makes that
-    ordering certain instead of a race.
+    Two separate failures lived here: the server device did not exist yet when
+    a per-library entity named it ("non existing via_device"), and on Home
+    Assistant 2026.9+ naming it by identifier at all is deprecated in favour of
+    via_device_id.
     """
-    with patch("custom_components.audiobookshelf_plus.PLATFORMS", [Platform.BUTTON]):
-        mock_config_entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
-
-    registry = dr.async_get(hass)
+    await _setup_buttons_only(hass, mock_config_entry)
     entry_id = mock_config_entry.entry_id
-    server = registry.async_get_device(identifiers={(DOMAIN, entry_id)})
-    assert server is not None
-    child = registry.async_get_device(identifiers={(DOMAIN, f"{entry_id}_lib-books")})
-    assert child is not None
+    server = _device(hass, entry_id, entry_id)
+    child = _device(hass, entry_id, f"{entry_id}_lib-books")
     assert child.via_device_id == server.id
-    assert "non existing `via_device`" not in caplog.text
+    assert "via_device" not in caplog.text
+
+
+async def test_older_home_assistant_links_by_identifier(
+    hass, mock_config_entry, mock_abs_client, mock_rest
+) -> None:
+    """Before 2026.8 there is no via_device_id, so the identifier is used."""
+    with patch(
+        "custom_components.audiobookshelf_plus.entity.VIA_DEVICE_ID_SUPPORTED", False
+    ):
+        await _setup_buttons_only(hass, mock_config_entry)
+    entry_id = mock_config_entry.entry_id
+    server = _device(hass, entry_id, entry_id)
+    assert _device(hass, entry_id, f"{entry_id}_lib-books").via_device_id == server.id

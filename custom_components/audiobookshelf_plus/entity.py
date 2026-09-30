@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
+from homeassistant.const import MAJOR_VERSION, MINOR_VERSION
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import Entity
@@ -19,6 +20,19 @@ from .coordinator import (
     LibraryData,
     UserData,
 )
+
+# Home Assistant 2026.8 added via_device_id to DeviceInfo, and 2026.9 deprecated
+# via_device (it stops working in 2027.8). Older releases only know via_device.
+VIA_DEVICE_ID_SUPPORTED = (MAJOR_VERSION, MINOR_VERSION) >= (2026, 8)
+
+
+def _via_server(coordinator: AudiobookshelfCoordinator) -> DeviceInfo:
+    """Link a library or user device to the server device."""
+    if VIA_DEVICE_ID_SUPPORTED and coordinator.server_device_id is not None:
+        return DeviceInfo(via_device_id=coordinator.server_device_id)
+    # Typed against current Home Assistant, whose DeviceInfo no longer declares
+    # via_device; the releases that reach this line still accept it.
+    return cast(DeviceInfo, {"via_device": (DOMAIN, coordinator.entry_id)})
 
 
 def server_device_info(coordinator: AudiobookshelfCoordinator) -> DeviceInfo:
@@ -93,7 +107,7 @@ class AudiobookshelfLibraryEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
             manufacturer="Audiobookshelf",
             model="Library",
             name=library.name,
-            via_device=(DOMAIN, entry_id),
+            **_via_server(coordinator),
             configuration_url=f"{coordinator.base_url}/library/{library.library_id}",
         )
 
@@ -141,7 +155,7 @@ class AudiobookshelfUserEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
             manufacturer="Audiobookshelf",
             model="User",
             name=f"Audiobookshelf Plus {user.username}",
-            via_device=(DOMAIN, entry_id),
+            **_via_server(coordinator),
         )
 
     @property

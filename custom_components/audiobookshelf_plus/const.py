@@ -9,14 +9,16 @@ DOMAIN: Final = "audiobookshelf_plus"
 SCAN_INTERVAL: Final = timedelta(minutes=5)
 
 # Audiobookshelf pushes when a session opens and closes, but NOT while it plays,
-# and never when it pauses. So while something is playing we poll faster in order
-# to notice a pause. See AudiobookshelfCoordinator._next_interval().
-SCAN_INTERVAL_LISTENING: Final = timedelta(seconds=30)
+# and never on pause or resume. So playback state is polled on its own, from
+# /api/sessions/open alone, which the server answers from memory. The full poll
+# stays at SCAN_INTERVAL. See AudiobookshelfCoordinator._async_poll_sessions().
+SESSION_POLL_INTERVAL: Final = timedelta(seconds=15)
 
-# A playing client syncs its position every ~15s. If a session has not been
-# updated within this window it is paused or abandoned, not playing. Audiobookshelf
-# never closes sessions on its own, so /api/sessions/open is full of stale ones.
-SESSION_FRESH_SECONDS: Final = 90
+# A playing client syncs its position every 10s (web) to 20s (iOS, measured on a
+# live 2.37.0 server). A session not updated within this window has missed two
+# syncs, so it is paused or abandoned, not playing. Audiobookshelf never closes
+# sessions on its own, so /api/sessions/open is full of stale ones.
+SESSION_FRESH_SECONDS: Final = 45
 
 # Audiobookshelf servers accumulate accounts. Only enable a media player by
 # default for someone who has listened recently; the rest are created but

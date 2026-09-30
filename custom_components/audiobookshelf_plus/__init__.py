@@ -84,11 +84,15 @@ async def async_setup_entry(
         hass.http.register_view(AudiobookshelfCoverView(hass))
         hass.data[_VIEW_REGISTERED] = True
 
-    # Library and user devices name this one as their via_device. Platforms load
+    # Library and user devices link to this one (via_device_id). Platforms load
     # in parallel, so it must exist before any of them does, or HA drops the
     # link and logs a non-existing via_device.
-    dr.async_get(hass).async_get_or_create(
-        config_entry_id=entry.entry_id, **server_device_info(coordinator)
+    coordinator.server_device_id = (
+        dr.async_get(hass)
+        .async_get_or_create(
+            config_entry_id=entry.entry_id, **server_device_info(coordinator)
+        )
+        .id
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

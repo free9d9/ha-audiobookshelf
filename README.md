@@ -188,8 +188,11 @@ Push, with a poll as backstop:
   item; without coalescing a 500-book scan would trigger 500 refreshes. This is the exact
   problem that has kept webhook support stalled upstream
   ([advplyr/audiobookshelf#1857](https://github.com/advplyr/audiobookshelf/issues/1857)).
-- While someone is listening the fallback poll tightens to 30 seconds, because
-  Audiobookshelf emits **nothing at all when a client pauses**.
+- Playback state is polled on its own **every 15 seconds**, because Audiobookshelf emits
+  **nothing at all when a client pauses or resumes**. That poll asks only for open
+  sessions, which the server answers from memory, and writes only when something
+  changed. A resume shows within about 15 seconds and a pause within about a minute; the
+  full poll of libraries and users stays at five minutes.
 - If the socket drops, or the server refuses its sign-in, the REST poll keeps things fresh
   and `binary_sensor.audiobookshelf_plus_realtime_updates` turns off straight away.
 
@@ -202,8 +205,9 @@ Three quirks of the Audiobookshelf API, all verified against 2.35.1 source and a
 server, shape how this works:
 
 1. **Sessions are never closed.** `/api/sessions/open` returns sessions that stopped hours
-   or days ago. Liveness is judged by whether the position was synced in the last 90
-   seconds, not by presence in that list.
+   or days ago. Liveness is judged by whether the position was synced in the last 45
+   seconds (two missed syncs: clients sync every 10 to 20 seconds while playing), not by
+   presence in that list.
 2. **A close looks exactly like a start.** `closeSession()` emits `user_stream_update`
    *before* `removeSession()`, so the payload still contains the session that is
    disappearing. `removeSession()` emits nothing, and `user_session_closed` only reaches

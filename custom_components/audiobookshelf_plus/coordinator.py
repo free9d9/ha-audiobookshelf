@@ -20,11 +20,12 @@ from aiohttp import ClientError, ClientSession
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_URL
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -44,8 +45,8 @@ from .const import (
     REFRESH_COOLDOWN_SECONDS,
     RELEASE_CHECK_INTERVAL,
     SCAN_INTERVAL,
-    SCAN_INTERVAL_LISTENING,
     SESSION_FRESH_SECONDS,
+    SESSION_POLL_INTERVAL,
     SOCKET_API_KEY_MIN_VERSION,
     STATS_INTERVAL,
     TASK_LIBRARY_SCAN,
@@ -226,6 +227,13 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         # (it answers a bad token with `auth_failed` and leaves the socket
         # open), so "connected" also needs the server's `init`.
         self._socket_authed: bool = False
+        self._session_poll_busy: bool = False
+        # Who was playing when entities last wrote their state, so the session
+        # poll knows when a pause (a session merely ageing) needs a write.
+        self._written_live_ids: set[str] = set()
+        # Registry id of the server device, which library and user devices
+        # link to. Set by async_setup_entry before any platform loads.
+        self.server_device_id: str | None = None
 
     @property
     def connected(self) -> bool:
@@ -259,6 +267,14 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         self._async_check_key_expiry()
         await self._async_check_timezone()
         await self._async_connect_socket(session)
+        self.entry.async_on_unload(
+            async_track_time_interval(
+                self.hass,
+                self._async_poll_sessions,
+                SESSION_POLL_INTERVAL,
+                name=f"{DOMAIN} session poll",
+            )
+        )
 
     async def _async_check_timezone(self) -> None:
         """Raise a repair issue when Audiobookshelf keeps a different clock.
@@ -400,6 +416,13 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             self._socket = None
         await super().async_shutdown()
 
+    @callback
+    def async_update_listeners(self) -> None:
+        """Note who is playing as every entity writes, then notify them."""
+        if self.data is not None:
+            self._written_live_ids = _live_ids(self.data.users)
+        super().async_update_listeners()
+
     # ----------------------------------------------------------- push handlers
 
     def _push_connected(self) -> None:
@@ -483,9 +506,9 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             )
 
         self._fire_session_events(self.data.users, users)
-        new = replace(self.data, users=users, connected=self.connected)
-        self.update_interval = self._next_interval(new)
-        self.async_set_updated_data(new)
+        self.async_set_updated_data(
+            replace(self.data, users=users, connected=self.connected)
+        )
 
     def _fire_session_events(
         self, old: dict[str, UserData], new: dict[str, UserData]
@@ -558,9 +581,44 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         # A scan changes item counts and issue counts, so pick those up too.
         await self.async_request_refresh()
 
-    def _next_interval(self, data: AudiobookshelfData) -> timedelta:
-        """Poll faster while anything is playing, so we notice a pause."""
-        return SCAN_INTERVAL_LISTENING if data.listening_now else SCAN_INTERVAL
+    async def _async_poll_sessions(self, _now: datetime | None = None) -> None:
+        """Refresh playback state alone, every SESSION_POLL_INTERVAL.
+
+        Pause and resume reach Audiobookshelf only as position syncs, which it
+        never pushes to an admin, so this is the only way to see them. It asks
+        for open sessions and nothing else, and writes only when a session or
+        its playing/paused standing actually changed.
+
+        It deliberately does not use async_set_updated_data(): that reschedules
+        the full poll, and a session that changes every sync would postpone the
+        libraries and users forever while anyone listens.
+        """
+        if self.data is None or self.rest is None or self._session_poll_busy:
+            return
+        self._session_poll_busy = True
+        try:
+            raw = await self.rest.async_get_open_sessions()
+        except AudiobookshelfRestError as err:
+            # The full poll owns availability; one missed tick is not an outage.
+            _LOGGER.debug("Session poll failed: %s", err)
+            return
+        finally:
+            self._session_poll_busy = False
+
+        sessions = _latest_sessions(raw)
+        old = self.data.users
+        users = {
+            uid: replace(user, session=sessions.get(uid)) for uid, user in old.items()
+        }
+        changed = any(users[uid].session != old[uid].session for uid in users)
+        # A paused session changes nothing in the payload, it just ages. The
+        # media player reads liveness when it writes, so a write is due the
+        # moment anyone crosses the freshness line.
+        if not changed and _live_ids(users) == self._written_live_ids:
+            return
+        self._fire_session_events(old, users)
+        self.data = replace(self.data, users=users)
+        self.async_update_listeners()
 
     # ------------------------------------------------------------------- fetch
 
@@ -580,19 +638,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         await self._async_refresh_stats(raw_users)
         await self._async_refresh_release()
 
-        sessions: dict[str, SessionData] = {}
-        for raw in raw_sessions:
-            parsed = _parse_session(raw)
-            uid = raw.get("userId")
-            # Keep the freshest session if a user somehow has several.
-            if (
-                parsed is not None
-                and uid
-                and (
-                    uid not in sessions or parsed.updated_at > sessions[uid].updated_at
-                )
-            ):
-                sessions[uid] = parsed
+        sessions = _latest_sessions(raw_sessions)
 
         users = {
             u["id"]: UserData(
@@ -643,7 +689,6 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             scanning=set(self._scanning),
             connected=self.connected,
         )
-        self.update_interval = self._next_interval(data)
         return data
 
     async def _async_refresh_stats(self, raw_users: list[dict[str, Any]]) -> None:
@@ -755,6 +800,27 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             # Deliberately omitted: description. It is long, and every attribute
             # is written to the recorder database on each state change.
         }
+
+
+def _latest_sessions(raw_sessions: list[dict[str, Any]]) -> dict[str, SessionData]:
+    """Map each user to their freshest open session."""
+    sessions: dict[str, SessionData] = {}
+    for raw in raw_sessions:
+        parsed = _parse_session(raw)
+        uid = raw.get("userId")
+        # Keep the freshest session if a user somehow has several.
+        if (
+            parsed is not None
+            and uid
+            and (uid not in sessions or parsed.updated_at > sessions[uid].updated_at)
+        ):
+            sessions[uid] = parsed
+    return sessions
+
+
+def _live_ids(users: dict[str, UserData]) -> set[str]:
+    """Users whose session is playing right now."""
+    return {uid for uid, u in users.items() if u.session and u.session.is_live}
 
 
 def _parse_session(raw: Any) -> SessionData | None:
