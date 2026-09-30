@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.4]
+
+### Fixed
+
+- The cover proxy also serves a request Home Assistant has already
+  authenticated, signature or not. Dashboard cards that fetch same-origin
+  images with the user's bearer token (`hass.fetchWithAuth`), and strip
+  per-URL credentials so token churn cannot trip the IP ban, would otherwise
+  have been refused every poster by 0.12.3. Unauthenticated requests still need
+  a valid signature, and still get a 404 without one.
+
 ## [0.12.3]
 
 ### Fixed

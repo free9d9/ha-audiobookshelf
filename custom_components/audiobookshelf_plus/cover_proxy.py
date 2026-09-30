@@ -27,7 +27,7 @@ from http import HTTPStatus
 from typing import Any
 
 from aiohttp import ClientError, ClientTimeout, web
-from homeassistant.components.http.view import HomeAssistantView
+from homeassistant.components.http import KEY_AUTHENTICATED, HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
@@ -74,12 +74,14 @@ def signed_cover_url(
 
 
 class AudiobookshelfCoverView(HomeAssistantView):
-    """Serve ABS cover art to anyone holding a correctly signed URL."""
+    """Serve ABS cover art to a signed URL, or to a logged-in request."""
 
     url = COVER_URL
     name = "api:audiobookshelf_plus:cover"
-    # <img> tags cannot send a token, so the signature is the credential. It is
-    # checked below, and failing it is a 404 rather than a 401 on purpose.
+    # <img> tags cannot send a token, so the signature is the credential. A
+    # request Home Assistant already authenticated (a card fetching with the
+    # user's bearer token) needs no signature. Anything else is a 404 rather
+    # than a 401 on purpose.
     requires_auth = False
 
     def __init__(self, hass: HomeAssistant) -> None:
@@ -87,13 +89,19 @@ class AudiobookshelfCoverView(HomeAssistantView):
         self._hass = hass
         self._session = async_get_clientsession(hass)
 
+    def _signed(self, request: web.Request, entry_id: str, item_id: str) -> bool:
+        """Whether the URL carries this cover's signature."""
+        return self._hass.data.get(_SECRET) is not None and hmac.compare_digest(
+            request.query.get(SIG_PARAM, ""),
+            _signature(self._hass, entry_id, item_id),
+        )
+
     async def get(
         self, request: web.Request, entry_id: str, item_id: str
     ) -> web.StreamResponse:
         """Proxy one cover image."""
-        if self._hass.data.get(_SECRET) is None or not hmac.compare_digest(
-            request.query.get(SIG_PARAM, ""),
-            _signature(self._hass, entry_id, item_id),
+        if not request.get(KEY_AUTHENTICATED) and not self._signed(
+            request, entry_id, item_id
         ):
             return web.Response(status=HTTPStatus.NOT_FOUND)
         entry = self._hass.config_entries.async_get_entry(entry_id)

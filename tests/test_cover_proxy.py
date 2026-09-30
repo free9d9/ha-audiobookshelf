@@ -94,6 +94,26 @@ async def test_good_signature_serves_the_cover_without_a_login(
     assert await resp.read() == b"imagebytes"
 
 
+async def test_a_logged_in_request_needs_no_signature(
+    hass, aioclient_mock, init_integration, hass_client
+) -> None:
+    """A card fetching with the user's bearer token may drop the signature.
+
+    Dashboards fetch same-origin images with hass.fetchWithAuth so that token
+    and signature churn cannot trip the IP ban; some strip the signature.
+    """
+    aioclient_mock.get(
+        f"{URL}/api/items/item-1/cover",
+        content=b"imagebytes",
+        headers={"Content-Type": "image/jpeg"},
+    )
+    client = await hass_client()
+    path = f"/api/audiobookshelf_plus/cover/{init_integration.entry_id}/item-1?v=7"
+    resp = await client.get(path)
+    assert resp.status == HTTPStatus.OK
+    assert await resp.read() == b"imagebytes"
+
+
 async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
     """The browser gets the bytes, and cache headers the server never sent."""
     from custom_components.audiobookshelf_plus.cover_proxy import (
@@ -115,7 +135,7 @@ async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
         async def __aexit__(self, *args):
             return False
 
-    class _Request:
+    class _Request(dict):  # an unauthenticated request; aiohttp requests are mappings
         headers: dict[str, str] = {"Accept": "image/webp"}
         query: dict[str, str] = {
             "v": "55",
@@ -140,7 +160,7 @@ async def test_cover_view_revalidates(hass, init_integration) -> None:
 
     view = AudiobookshelfCoverView(hass)
 
-    class _Request:
+    class _Request(dict):  # an unauthenticated request; aiohttp requests are mappings
         headers = {"If-None-Match": 'W/"item-1-55"'}
         query = {"v": "55", "sig": _sig(hass, init_integration.entry_id)}
 
@@ -157,7 +177,7 @@ async def test_cover_view_unknown_entry(hass, init_integration) -> None:
 
     view = AudiobookshelfCoverView(hass)
 
-    class _Request:
+    class _Request(dict):  # an unauthenticated request; aiohttp requests are mappings
         headers: dict[str, str] = {}
         query: dict[str, str] = {"sig": _sig(hass, "no-such-entry")}
 
@@ -187,7 +207,7 @@ async def test_cover_view_upstream_missing(hass, init_integration) -> None:
         async def __aexit__(self, *args):
             return False
 
-    class _Request:
+    class _Request(dict):  # an unauthenticated request; aiohttp requests are mappings
         headers: dict[str, str] = {}
         query = {"v": "1", "sig": _sig(hass, init_integration.entry_id)}
 
@@ -209,7 +229,7 @@ async def test_cover_view_upstream_error(hass, init_integration) -> None:
     def _boom(*args, **kwargs):
         raise ClientError
 
-    class _Request:
+    class _Request(dict):  # an unauthenticated request; aiohttp requests are mappings
         headers: dict[str, str] = {}
         query = {"v": "1", "sig": _sig(hass, init_integration.entry_id)}
 
