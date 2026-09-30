@@ -188,6 +188,7 @@ def mock_rest() -> Generator[MagicMock]:
         ]
     )
     rest.async_get_open_sessions = AsyncMock(return_value=[])
+    rest.async_get_recent_sessions = AsyncMock(return_value=[])
     rest.async_get_users_online = AsyncMock(return_value=[{"username": "Alice"}])
     rest.async_get_status = AsyncMock(return_value={"serverVersion": SERVER_VERSION})
     rest.async_get_issue_count = AsyncMock(return_value=0)

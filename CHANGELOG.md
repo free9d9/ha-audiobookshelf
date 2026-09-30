@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0]
+
+### Added
+
+- **Downloaded playback shows on the media players (#5).** When an app plays a
+  downloaded book it never opens a session on the server and emits no socket
+  event, but while the phone has a connection it syncs the session into
+  Audiobookshelf's database as it plays (every ~20 seconds of listening in
+  AudioBooth; every 15 seconds on Wi-Fi and 60 on cellular in the official
+  Android app). The 15-second playback poll now also reads recent sessions
+  from `/api/sessions`, so downloaded listening shows as playing, pauses, and
+  fires `playback_started` / `playback_stopped` like streaming does. The media
+  player gains a `downloaded` attribute. A downloaded session counts as
+  playing for 150 seconds after its last sync (a cellular sync can be a minute
+  apart), and shows as paused for 30 minutes after it, since the server never
+  closes one. With the phone fully offline nothing reaches the server, so
+  nothing can show until it reconnects.
+
+### Changed
+
+- The media player's `device` attribute falls back to the app name and
+  version (for example "AudioBooth iOS 1.11") when a client reports no
+  device model, instead of a bare "ios".
+
 ## [0.12.4]
 
 ### Fixed

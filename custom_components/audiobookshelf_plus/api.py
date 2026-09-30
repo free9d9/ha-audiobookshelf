@@ -121,6 +121,19 @@ class AudiobookshelfRest:
         payload = await self._request("GET", "/api/sessions/open")
         return payload.get("sessions", []) if isinstance(payload, dict) else []
 
+    async def async_get_recent_sessions(self, limit: int) -> list[dict[str, Any]]:
+        """Return the most recently updated playback sessions, from the database.
+
+        Unlike /api/sessions/open this includes downloaded ("local") playback,
+        which clients sync straight into the database. Admin only.
+        """
+        payload = await self._request(
+            "GET",
+            "/api/sessions",
+            params={"sort": "updatedAt", "desc": "1", "itemsPerPage": str(limit)},
+        )
+        return payload.get("sessions", []) if isinstance(payload, dict) else []
+
     async def async_get_users(self) -> list[dict[str, Any]]:
         """Users, each with their `latestSession` if they have ever listened."""
         payload = await self._request(

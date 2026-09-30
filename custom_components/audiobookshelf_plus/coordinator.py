@@ -38,10 +38,14 @@ from .const import (
     ISSUE_KEY_EXPIRING,
     ISSUE_TIMEZONE_MISMATCH,
     KEY_EXPIRY_WARN_DAYS,
+    LOCAL_SESSION_FRESH_SECONDS,
+    LOCAL_SESSION_PAUSED_WINDOW,
     NEW_ITEM_DAYS,
     PARSE_DICT_AUDIOBOOK,
     PARSE_DICT_EBOOK,
+    PLAY_METHOD_LOCAL,
     RECENT_LIMIT,
+    RECENT_SESSIONS_LIMIT,
     REFRESH_COOLDOWN_SECONDS,
     RELEASE_CHECK_INTERVAL,
     SCAN_INTERVAL,
@@ -89,16 +93,20 @@ class SessionData:
     updated_at: datetime
     is_podcast: bool
     device: str
+    # Downloaded playback, synced from the device rather than streamed.
+    is_local: bool = False
 
     @property
     def is_live(self) -> bool:
         """Whether this session is actually playing right now.
 
         Audiobookshelf never closes sessions when a client stops, so presence in
-        /api/sessions/open means nothing. A playing client syncs every ~15s.
+        /api/sessions/open means nothing. A playing client syncs every 10 to 20
+        seconds, or every 60 for downloaded playback on a metered connection.
         """
         age = (datetime.now(UTC) - self.updated_at).total_seconds()
-        return age <= SESSION_FRESH_SECONDS
+        fresh = LOCAL_SESSION_FRESH_SECONDS if self.is_local else SESSION_FRESH_SECONDS
+        return age <= fresh
 
 
 @dataclass(slots=True)
@@ -416,6 +424,38 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             self._socket = None
         await super().async_shutdown()
 
+    async def _async_fetch_sessions(self) -> dict[str, SessionData]:
+        """Each user's current session, streamed or downloaded.
+
+        Both polls go through here, so they can never disagree about what
+        someone is playing (a disagreement would flap the media player every
+        five minutes).
+        """
+        assert self.rest is not None
+        raw = await self.rest.async_get_open_sessions()
+        return _latest_sessions(raw + await self._async_recent_local_sessions())
+
+    async def _async_recent_local_sessions(self) -> list[dict[str, Any]]:
+        """Downloaded-playback sessions synced within the paused window.
+
+        A failure here only hides downloaded playback for a tick; it must not
+        take streaming sessions down with it.
+        """
+        assert self.rest is not None
+        try:
+            recent = await self.rest.async_get_recent_sessions(RECENT_SESSIONS_LIMIT)
+        except AudiobookshelfRestError as err:
+            _LOGGER.debug("Could not read recent sessions: %s", err)
+            return []
+        cutoff = datetime.now(UTC) - LOCAL_SESSION_PAUSED_WINDOW
+        return [
+            raw
+            for raw in recent
+            if raw.get("playMethod") == PLAY_METHOD_LOCAL
+            and (updated := _ms_to_dt(raw.get("updatedAt"))) is not None
+            and updated >= cutoff
+        ]
+
     @callback
     def async_update_listeners(self) -> None:
         """Note who is playing as every entity writes, then notify them."""
@@ -597,7 +637,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             return
         self._session_poll_busy = True
         try:
-            raw = await self.rest.async_get_open_sessions()
+            sessions = await self._async_fetch_sessions()
         except AudiobookshelfRestError as err:
             # The full poll owns availability; one missed tick is not an outage.
             _LOGGER.debug("Session poll failed: %s", err)
@@ -605,7 +645,6 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         finally:
             self._session_poll_busy = False
 
-        sessions = _latest_sessions(raw)
         old = self.data.users
         users = {
             uid: replace(user, session=sessions.get(uid)) for uid, user in old.items()
@@ -629,7 +668,7 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         try:
             raw_libraries = await self.rest.async_get_libraries_with_stats()
             raw_users = await self.rest.async_get_users()
-            raw_sessions = await self.rest.async_get_open_sessions()
+            sessions = await self._async_fetch_sessions()
             raw_online = await self.rest.async_get_users_online()
             status = await self.rest.async_get_status()
         except AudiobookshelfRestError as err:
@@ -637,8 +676,6 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
 
         await self._async_refresh_stats(raw_users)
         await self._async_refresh_release()
-
-        sessions = _latest_sessions(raw_sessions)
 
         users = {
             u["id"]: UserData(
@@ -830,10 +867,15 @@ def _parse_session(raw: Any) -> SessionData | None:
     updated = _ms_to_dt(raw.get("updatedAt"))
     if updated is None:
         return None
-    device = raw.get("mediaPlayer") or ""
     info = raw.get("deviceInfo") or {}
     if model := info.get("model"):
         device = f"{info.get('manufacturer', '')} {model}".strip()
+    elif client := info.get("clientName"):
+        # AudioBooth fills in only the app, e.g. "AudioBooth iOS 1.11 (1784179683)".
+        # The build number is noise on a dashboard.
+        device = client.split(" (")[0]
+    else:
+        device = raw.get("mediaPlayer") or ""
     return SessionData(
         session_id=raw["id"],
         item_id=raw.get("libraryItemId", ""),
@@ -844,6 +886,7 @@ def _parse_session(raw: Any) -> SessionData | None:
         updated_at=updated,
         is_podcast=bool(raw.get("episodeId")),
         device=device,
+        is_local=raw.get("playMethod") == PLAY_METHOD_LOCAL,
     )
 
 

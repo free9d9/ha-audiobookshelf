@@ -238,20 +238,24 @@ server, shape how this works:
         - sensor.e_books_recently_added
   ```
 
-- **Offline (downloaded) playback is invisible.** When the mobile app plays a book it has
-  downloaded, it never opens a session on the server - it plays locally and posts the
-  result to `/api/session/local` afterwards. Verified against 2.35.1: that sync creates no
-  open session and emits no `user_stream_update`, not even to an admin. So a listener who
-  downloads everything shows as `idle`, `listening_now` does not count them, and no
-  `playback_started` / `playback_stopped` events fire.
+- **Downloaded playback shows, with a longer delay.** When an app plays a book it has
+  downloaded, it never opens a session on the server and emits no socket event, not even
+  to an admin. What it does do, while the phone has a connection, is sync the session to
+  `/api/session/local` as it plays: every ~20 seconds of listening in AudioBooth, every
+  15 seconds on Wi-Fi and every 60 on cellular in the official Android app. That lands in
+  Audiobookshelf's database, so the integration reads recent sessions back from
+  `/api/sessions` on the same 15-second poll and shows them on the media player, with
+  `downloaded: true` in its attributes.
 
-  Their **progress still arrives** whenever the app syncs, so `continue_listening` resumes
-  correctly - at the last position the phone managed to upload. If the phone is still
-  offline, you resume behind.
+  Because a cellular sync can be a minute apart, a downloaded session counts as playing
+  for 150 seconds after its last sync (streaming gets 45), so a pause takes up to about
+  two and a half minutes to show. The server never closes a downloaded session, so after
+  its last sync it shows as paused for 30 minutes, then the player goes idle.
+  `playback_started` and `playback_stopped` fire for downloaded sessions too.
 
-  This is Audiobookshelf's design, not something the integration can paper over. The one
-  signal that *is* emitted is `user_item_progress_updated`, and it goes only to that user's
-  own sockets - never to an admin.
+  With the phone fully offline nothing reaches the server until it reconnects and
+  uploads, so the player stays idle and `continue_listening` resumes from the last
+  position that made it up.
 - **Talkback speakers are refused.** Security-camera speakers and doorbell chimes register
   as `media_player` entities with `device_class: speaker`, indistinguishable from a real
   speaker by name or class. They give themselves away by offering `PLAY_MEDIA` and `STOP`

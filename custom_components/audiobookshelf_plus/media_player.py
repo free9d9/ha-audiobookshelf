@@ -160,6 +160,7 @@ class AudiobookshelfMediaPlayer(AudiobookshelfUserEntity, MediaPlayerEntity):
         if user is not None and user.session is not None:
             attrs["device"] = user.session.device
             attrs["session_id"] = user.session.session_id
+            attrs["downloaded"] = user.session.is_local
 
         if user is not None and (latest := user.latest_session) is not None:
             attrs["last_title"] = latest.title

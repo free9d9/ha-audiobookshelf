@@ -20,6 +20,20 @@ SESSION_POLL_INTERVAL: Final = timedelta(seconds=15)
 # sessions on its own, so /api/sessions/open is full of stale ones.
 SESSION_FRESH_SECONDS: Final = 45
 
+# Downloaded ("local") playback never enters /api/sessions/open and emits no
+# socket event: the app posts it to /api/session/local, straight into the
+# database, so it is read back from /api/sessions (newest first). AudioBooth
+# syncs every ~20s of listening, but the official Android app only every 60s on
+# a metered connection, which is exactly the away-from-home case, hence a wider
+# window than streaming gets.
+PLAY_METHOD_LOCAL: Final = 3
+LOCAL_SESSION_FRESH_SECONDS: Final = 150
+# A local session is never closed on the server, so after its last sync it
+# shows as paused for this long, then the player goes idle.
+LOCAL_SESSION_PAUSED_WINDOW: Final = timedelta(minutes=30)
+# How many of the most recently updated sessions to scan for local ones.
+RECENT_SESSIONS_LIMIT: Final = 20
+
 # Audiobookshelf servers accumulate accounts. Only enable a media player by
 # default for someone who has listened recently; the rest are created but
 # disabled, and can be switched on from the UI.
