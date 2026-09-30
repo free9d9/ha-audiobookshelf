@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1]
+
+### Changed
+
+- Diagnostics redact the server URL as well as the keys and tokens. People
+  attach diagnostics to public issues, and the URL names their host.
+- Diagnostics include the Audiobookshelf server version, the first question
+  on nearly every bug report.
+
 ## [0.13.0]
 
 ### Added

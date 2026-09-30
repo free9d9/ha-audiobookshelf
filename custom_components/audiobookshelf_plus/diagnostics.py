@@ -6,15 +6,24 @@ from dataclasses import asdict
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import HomeAssistant
 
 from .const import CONF_LINKED_USERS
 from .coordinator import AudiobookshelfConfigEntry
 
 # The entry's own admin key, plus every per-user key the options flow minted.
-# All of them are full account credentials.
-TO_REDACT = {CONF_API_KEY, "api_key", "token", "ha_user_id", "user_id", "key_id"}
+# All of them are full account credentials. The server URL goes too: people
+# attach diagnostics to public issues, and it names their host.
+TO_REDACT = {
+    CONF_API_KEY,
+    CONF_URL,
+    "api_key",
+    "token",
+    "ha_user_id",
+    "user_id",
+    "key_id",
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -38,6 +47,7 @@ async def async_get_config_entry_diagnostics(
             },
         },
         "connection": {
+            "server_version": data.server_version or None,
             "realtime_connected": coordinator.connected,
             "update_interval_seconds": (
                 coordinator.update_interval.total_seconds()

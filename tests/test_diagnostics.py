@@ -9,7 +9,7 @@ from custom_components.audiobookshelf_plus.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 
-from .conftest import make_api_key, open_session
+from .conftest import SERVER_VERSION, make_api_key, open_session
 
 
 async def test_diagnostics_redacts_every_credential(hass, init_integration) -> None:
@@ -34,6 +34,9 @@ async def test_diagnostics_redacts_every_credential(hass, init_integration) -> N
     blob = json.dumps(result, default=str)
 
     assert result["entry"]["data"]["api_key"] == "**REDACTED**"
+    # People attach these to public issues; the URL names their host.
+    assert result["entry"]["data"]["url"] == "**REDACTED**"
+    assert init_integration.data["url"] not in blob
     assert secret not in blob
     assert "ha-1" not in blob
     assert "key-1" not in blob
@@ -48,6 +51,7 @@ async def test_diagnostics_content(hass, init_integration) -> None:
     result = await async_get_config_entry_diagnostics(hass, init_integration)
 
     assert result["connection"]["realtime_connected"] is True
+    assert result["connection"]["server_version"] == SERVER_VERSION
     assert result["connection"]["last_update_success"] is True
     names = {library["name"] for library in result["libraries"]}
     assert names == {"Audiobooks", "E-Books"}
