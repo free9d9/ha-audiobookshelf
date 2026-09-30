@@ -6,7 +6,7 @@ import base64
 import datetime as dt
 import json
 import time
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -107,11 +107,11 @@ def _item(item_id: str, title: str, duration: float) -> MagicMock:
     return item
 
 
-def _shelf(items: list[MagicMock]) -> MagicMock:
-    shelf = MagicMock()
-    shelf.id_ = "recently-added"
-    shelf.entities = items
-    return shelf
+def _page(items: list[MagicMock]) -> MagicMock:
+    page = MagicMock()
+    page.results = items
+    page.total = len(items)
+    return page
 
 
 @pytest.fixture
@@ -120,14 +120,17 @@ def mock_abs_client() -> Generator[MagicMock]:
     client = MagicMock()
     client.get_all_libraries = AsyncMock(return_value=[])
 
-    async def _personalized(*, library_id: str, limit: int) -> list[MagicMock]:
+    async def _items(
+        *, library_id: str, sort: str | None = None, desc: bool = False
+    ) -> AsyncGenerator[MagicMock]:
+        # The newest-first listing, one page per call, like the real client.
+        assert (sort, desc) == ("addedAt", True)
         if library_id == "lib-books":
-            return [_shelf([_item("item-1", "A Book", 3600.0)])]
+            yield _page([_item("item-1", "A Book", 3600.0)])
         if library_id == "lib-ebooks":
-            return [_shelf([_item("item-2", "An Ebook", 0.0)])]
-        return []
+            yield _page([_item("item-2", "An Ebook", 0.0)])
 
-    client.get_library_personalized_view = AsyncMock(side_effect=_personalized)
+    client.get_library_items = MagicMock(side_effect=_items)
 
     socket = MagicMock()
     socket.client.connected = True

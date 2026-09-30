@@ -7,6 +7,7 @@ import binascii
 import json
 import logging
 import time
+from contextlib import aclosing
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -262,6 +263,8 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             url=self.base_url,
             token=self._api_key,
             logger=_LOGGER,  # else the library calls logging.basicConfig(DEBUG)
+            # One page is exactly the recently-added feed; see _async_recent_items.
+            pagination_items_per_page=RECENT_LIMIT,
         )
         try:
             self._client = await absapi.get_admin_client_by_token(
@@ -774,35 +777,28 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         self._release_checked = now
 
     async def _async_recent_items(self, library_id: str) -> list[dict[str, Any]]:
-        """Return the library's Recently Added shelf, card-ready.
+        """Return the library's newest items, card-ready.
 
-        This is the same shelf Audiobookshelf shows on its own home page.
-        aioaudiobookshelf's get_library_items() exposes no sort/desc parameters
-        yet, so the personalized view is both the cleaner and the only public
-        route to it.
+        Not the personalized view's Recently Added shelf: Audiobookshelf only
+        builds that shelf from items added in the last 60 days, and leaves it
+        out entirely otherwise, so a library that had not grown in two months
+        had an empty feed and an unknown sensor. This is the same query, newest
+        first, without the cutoff. Only the first page is read; the client's
+        page size is RECENT_LIMIT.
         """
         assert self._client is not None
+        pages = self._client.get_library_items(
+            library_id=library_id, sort="addedAt", desc=True
+        )
         try:
-            shelves = await self._client.get_library_personalized_view(
-                library_id=library_id, limit=RECENT_LIMIT
-            )
+            async with aclosing(pages):
+                async for page in pages:
+                    return [
+                        self._entry_for(item) for item in page.results[:RECENT_LIMIT]
+                    ]
         except (ClientError, TimeoutError) as err:
             raise UpdateFailed(f"Cannot reach Audiobookshelf: {err}") from err
-
-        shelf = next(
-            (
-                s
-                for s in shelves
-                if str(getattr(s, "id_", "")).endswith("recently-added")
-            ),
-            None,
-        )
-        if shelf is None:
-            return []
-        return [
-            self._entry_for(item)
-            for item in getattr(shelf, "entities", [])[:RECENT_LIMIT]
-        ]
+        return []
 
     def _entry_for(self, item: Any) -> dict[str, Any]:
         """Map an ABS library item to one Upcoming-Media-Card style entry."""

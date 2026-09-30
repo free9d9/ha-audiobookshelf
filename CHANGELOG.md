@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.2]
+
+### Fixed
+
+- **A library that had not grown in two months showed an empty recently-added
+  feed and an `unknown` sensor.** The feed came from Audiobookshelf's own
+  Recently Added shelf, which only holds items added in the last 60 days and
+  is left out of the response entirely otherwise. The live E-Books library
+  (newest item added July 3) hit exactly that. The feed is now the library's
+  newest items by date added, with no cutoff.
+
 ## [0.13.1]
 
 ### Changed

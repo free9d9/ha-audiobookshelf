@@ -35,9 +35,14 @@ def _status(payload=STATUS_OK, status=200):
 
 
 def _validated(side_effect=None):
+    # absapi is one module shared with the coordinator, so the entry this flow
+    # creates is set up with this client too. A server with no libraries keeps
+    # that setup from calling anything the flow tests do not care about.
+    client = MagicMock()
+    client.get_all_libraries = AsyncMock(return_value=[])
     return patch(
         "custom_components.audiobookshelf_plus.config_flow.absapi.get_admin_client_by_token",
-        AsyncMock(side_effect=side_effect),
+        AsyncMock(side_effect=side_effect, return_value=client),
     )
 
 

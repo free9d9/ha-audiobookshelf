@@ -54,17 +54,27 @@ async def test_unreachable_server_retries(hass, mock_config_entry, mock_rest) ->
     assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
 
 
-async def test_personalized_view_failure(hass, init_integration, mock_abs_client):
-    """A shelf that will not load fails the refresh rather than half-updating."""
-    mock_abs_client.get_library_personalized_view.side_effect = ClientError
+async def test_recent_items_failure(hass, init_integration, mock_abs_client):
+    """A feed that will not load fails the refresh rather than half-updating."""
+
+    async def _unreachable(**_kwargs):
+        # Like the real client: the call is lazy, the request fails on iteration.
+        raise ClientError
+        yield
+
+    mock_abs_client.get_library_items.side_effect = _unreachable
     await init_integration.runtime_data.async_refresh()
     assert init_integration.runtime_data.last_update_success is False
 
 
-async def test_missing_recently_added_shelf(hass, init_integration, mock_abs_client):
-    """A library with no Recently Added shelf yields an empty feed, not a crash."""
-    mock_abs_client.get_library_personalized_view.side_effect = None
-    mock_abs_client.get_library_personalized_view.return_value = []
+async def test_empty_library_feed(hass, init_integration, mock_abs_client):
+    """A library with no items yields an empty feed, not a crash."""
+
+    async def _nothing(**_kwargs):
+        return
+        yield  # an async generator that yields no pages
+
+    mock_abs_client.get_library_items.side_effect = _nothing
     await init_integration.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert init_integration.runtime_data.data.libraries["lib-books"].recent == []
@@ -269,3 +279,31 @@ async def test_empty_body(hass, aioclient_mock) -> None:
     rest = AudiobookshelfRest(async_get_clientsession(hass), URL, "k")
     await rest.async_scan_library("l1")
     assert aioclient_mock.call_count == 1
+
+
+async def test_old_items_still_fill_the_feed(hass, init_integration, mock_abs_client):
+    """A library that has not grown in months still shows its newest items.
+
+    Audiobookshelf's own Recently Added shelf drops everything added more than
+    60 days ago, which left the live E-Books sensor unknown.
+    """
+    import time
+
+    from .conftest import _item, _page
+
+    old = _item("item-9", "An Old Ebook", 0.0)
+    old.added_at = int((time.time() - 200 * 86400) * 1000)
+
+    async def _only_old(**_kwargs):
+        yield _page([old])
+
+    mock_abs_client.get_library_items.side_effect = _only_old
+    await init_integration.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    library = init_integration.runtime_data.data.libraries["lib-ebooks"]
+    assert [e["title"] for e in library.recent] == ["An Old Ebook"]
+    assert library.newest_added is not None
+    assert hass.states.get("sensor.e_books_recently_added").state not in (
+        "unknown",
+        "unavailable",
+    )
