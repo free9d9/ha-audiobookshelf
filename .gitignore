@@ -10,3 +10,6 @@ htmlcov/
 
 # Local Claude Code notes: carries internal hostnames, and this repo is public.
 CLAUDE.md
+# Local pointer for Codex and other agents: it only redirects to CLAUDE.md above and
+# to paths on the owner's PC, so it is meaningless (and a dead link) in the public repo.
+AGENTS.md
