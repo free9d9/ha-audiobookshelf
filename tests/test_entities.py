@@ -188,7 +188,7 @@ async def test_media_player_shows_last_session_when_idle(
     cover = attrs["last_cover"]
     assert cover.startswith("/api/audiobookshelf_plus/cover/")
     assert "item-latest" in cover
-    assert "authSig=" in cover
+    assert "sig=" in cover
     # Idle: no live session, so its device attribute is absent.
     assert "device" not in attrs
 

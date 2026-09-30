@@ -97,12 +97,8 @@ NEW_ITEM_DAYS: Final = 7
 
 # Cover proxy. Covers are unauthenticated on ABS, but pointing a browser at the
 # raw ABS host breaks off-LAN access and is blocked as mixed content under
-# HTTPS, so we proxy and hand out signed HA URLs instead.
+# HTTPS, so we proxy and hand out signed HA URLs instead (see cover_proxy.py).
 COVER_URL: Final = "/api/audiobookshelf_plus/cover/{entry_id}/{item_id}"
-COVER_SIGN_TTL: Final = timedelta(days=7)
-# Re-sign this long before expiry so the URL stays stable between polls and
-# browsers keep their cached copy.
-COVER_SIGN_RENEW: Final = timedelta(days=1)
 
 # Header object the Upcoming Media Card spec expects at data[0]. Consumers that
 # do not understand it (our own card) simply slice it off.

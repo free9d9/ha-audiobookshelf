@@ -7,90 +7,80 @@ when HA is served over HTTPS. Routing art through HA fixes both.
 
 ABS sends no ETag, Last-Modified or Cache-Control on covers, so we synthesize
 caching from the item's updatedAt (passed as ?v=).
+
+The URLs are signed with our own key rather than Home Assistant's signed paths,
+for two reasons. HA keeps its signing secret in memory, so every restart killed
+every cover URL a dashboard was holding, and a card that lazy-loads posters
+then fetched dead URLs. And HA answers a dead signed path with 401, which its IP
+ban counts as a failed login: a few stale posters could ban a wall display. Our
+key is stored, so a URL stays valid (and cached) across restarts, and a bad one
+gets a 404, which is not a login failure.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
-from dataclasses import dataclass
-from time import time
+import secrets
+from http import HTTPStatus
 from typing import Any
 
 from aiohttp import ClientError, ClientTimeout, web
-from homeassistant.components.http.auth import async_sign_path
 from homeassistant.components.http.view import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 
-from .const import COVER_SIGN_RENEW, COVER_SIGN_TTL, COVER_URL
+from .const import COVER_URL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-
-@dataclass(frozen=True)
-class _Signed:
-    """One item's signed cover URL, and when it stops being usable."""
-
-    raw: str
-    signed: str
-    expires: float
+_SECRET = f"{DOMAIN}_cover_secret"
+_STORAGE_KEY = f"{DOMAIN}.cover"
+_STORAGE_VERSION = 1
+SIG_PARAM = "sig"
 
 
-# (entry_id, item_id) -> the signed URL last handed out for it. Keeping it
-# stable across refreshes matters: a new URL every poll is a cache miss in the
-# browser, so the dashboard re-downloads every cover it is already showing.
-#
-# Keyed by item rather than by URL, deliberately. The raw URL carries the item's
-# updatedAt as ?v=, so an actively-edited library would mint a new key per edit
-# and never drop the old ones; one row per item means an edit *replaces* the row
-# it supersedes, and the map can never outgrow the number of covers rendered.
-_SIGNED_CACHE: dict[tuple[str, str], _Signed] = {}
+async def async_load_cover_secret(hass: HomeAssistant) -> None:
+    """Load the cover-signing key, creating it on first run."""
+    store = Store[dict[str, str]](hass, _STORAGE_VERSION, _STORAGE_KEY)
+    data = await store.async_load()
+    if not data or not data.get("secret"):
+        data = {"secret": secrets.token_hex(32)}
+        await store.async_save(data)
+    hass.data[_SECRET] = data["secret"]
+
+
+def _signature(hass: HomeAssistant, entry_id: str, item_id: str) -> str:
+    """Sign which cover this is; the ?v= cache-buster needs no protection."""
+    key = str(hass.data[_SECRET]).encode()
+    message = f"{entry_id}/{item_id}".encode()
+    return hmac.new(key, message, hashlib.sha256).hexdigest()
 
 
 def signed_cover_url(
     hass: HomeAssistant, entry_id: str, item_id: str, version: Any
 ) -> str:
-    """Return a stable, signed HA URL for an item's cover."""
-    raw = COVER_URL.format(entry_id=entry_id, item_id=item_id) + f"?v={version}"
-    now = time()
-    cached = _SIGNED_CACHE.get((entry_id, item_id))
-    if (
-        cached is not None
-        and cached.raw == raw
-        and cached.expires - now > COVER_SIGN_RENEW.total_seconds()
-    ):
-        return cached.signed
+    """Return a stable, signed HA URL for an item's cover.
 
-    # Signing is rare -- once per cover per six days -- so this is the cheap
-    # place to drop rows for items that have since left the library, which
-    # otherwise sit here until Home Assistant restarts.
-    _purge_expired(now)
-
-    signed = async_sign_path(hass, raw, COVER_SIGN_TTL)
-    _SIGNED_CACHE[(entry_id, item_id)] = _Signed(
-        raw, signed, now + COVER_SIGN_TTL.total_seconds()
-    )
-    return signed
-
-
-def _purge_expired(now: float) -> None:
-    """Drop signed URLs that have lapsed."""
-    for key in [key for key, row in _SIGNED_CACHE.items() if row.expires <= now]:
-        del _SIGNED_CACHE[key]
-
-
-def release_signed_urls(entry_id: str) -> None:
-    """Forget one config entry's signed URLs, on unload."""
-    for key in [key for key in _SIGNED_CACHE if key[0] == entry_id]:
-        del _SIGNED_CACHE[key]
+    Stable for as long as the cover is: a new URL every poll would be a cache
+    miss in the browser, so the dashboard would re-download every cover it is
+    already showing.
+    """
+    sig = _signature(hass, entry_id, item_id)
+    path = COVER_URL.format(entry_id=entry_id, item_id=item_id)
+    return f"{path}?v={version}&{SIG_PARAM}={sig}"
 
 
 class AudiobookshelfCoverView(HomeAssistantView):
-    """Serve ABS cover art. Auth is satisfied by the signed path."""
+    """Serve ABS cover art to anyone holding a correctly signed URL."""
 
     url = COVER_URL
     name = "api:audiobookshelf_plus:cover"
-    requires_auth = True
+    # <img> tags cannot send a token, so the signature is the credential. It is
+    # checked below, and failing it is a 404 rather than a 401 on purpose.
+    requires_auth = False
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialise the view."""
@@ -101,9 +91,14 @@ class AudiobookshelfCoverView(HomeAssistantView):
         self, request: web.Request, entry_id: str, item_id: str
     ) -> web.StreamResponse:
         """Proxy one cover image."""
+        if self._hass.data.get(_SECRET) is None or not hmac.compare_digest(
+            request.query.get(SIG_PARAM, ""),
+            _signature(self._hass, entry_id, item_id),
+        ):
+            return web.Response(status=HTTPStatus.NOT_FOUND)
         entry = self._hass.config_entries.async_get_entry(entry_id)
         if entry is None or entry.state is not entry.state.LOADED:
-            return web.HTTPNotFound()
+            return web.Response(status=HTTPStatus.NOT_FOUND)
 
         base_url = entry.runtime_data.base_url
         version = request.query.get("v", "")
@@ -131,11 +126,11 @@ class AudiobookshelfCoverView(HomeAssistantView):
                         res.status,
                         ctype,
                     )
-                    return web.HTTPNotFound()
+                    return web.Response(status=HTTPStatus.NOT_FOUND)
                 body = await res.read()
         except (ClientError, TimeoutError) as err:
             _LOGGER.debug("Cover fetch failed for %s: %s", item_id, err)
-            return web.HTTPBadGateway()
+            return web.Response(status=HTTPStatus.BAD_GATEWAY)
 
         return web.Response(
             body=body,

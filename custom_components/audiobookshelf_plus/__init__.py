@@ -11,7 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
-from .cover_proxy import AudiobookshelfCoverView, release_signed_urls
+from .cover_proxy import AudiobookshelfCoverView, async_load_cover_secret
 from .entity import server_device_info
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
@@ -34,6 +34,7 @@ _VIEW_REGISTERED = f"{DOMAIN}_cover_view"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register actions, which must exist whether or not an entry is loaded."""
+    await async_load_cover_secret(hass)
     await async_setup_services(hass)
     await async_setup_remove_progress(hass)
     await async_setup_year_in_review(hass)
@@ -108,7 +109,6 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a config entry, closing the playback sessions it opened."""
     await async_teardown(hass, entry.entry_id)
-    release_signed_urls(entry.entry_id)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

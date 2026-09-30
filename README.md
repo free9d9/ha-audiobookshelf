@@ -91,7 +91,9 @@ and a human-readable `summary`.
 
 Cover art is proxied through Home Assistant and served over signed URLs, so posters load
 from outside your LAN and over HTTPS without exposing the Audiobookshelf host, and
-without a token ever reaching the browser.
+without a token ever reaching the browser. The URLs survive Home Assistant restarts (so
+browsers keep their cached covers), and a stale or forged one gets a 404, which never
+counts toward Home Assistant's `ip_ban_enabled` login-attempt limit.
 
 ## Resuming a book on a speaker
 

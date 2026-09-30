@@ -1,13 +1,20 @@
-"""The signed cover proxy."""
-
 from __future__ import annotations
 
-from dataclasses import replace
+from http import HTTPStatus
+
+from homeassistant.components.http.ban import KEY_FAILED_LOGIN_ATTEMPTS
 
 from custom_components.audiobookshelf_plus.cover_proxy import (
-    _SIGNED_CACHE,
+    _SECRET,
+    async_load_cover_secret,
     signed_cover_url,
 )
+
+from .conftest import URL
+
+
+def _sig(hass, entry_id: str, item_id: str = "item-1") -> str:
+    return signed_cover_url(hass, entry_id, item_id, 0).split("sig=")[1]
 
 
 async def test_signed_url_carries_a_signature(hass, init_integration) -> None:
@@ -17,7 +24,7 @@ async def test_signed_url_carries_a_signature(hass, init_integration) -> None:
         f"/api/audiobookshelf_plus/cover/{init_integration.entry_id}/item-1"
     )
     assert "v=123" in url
-    assert "authSig=" in url
+    assert "sig=" in url
 
 
 async def test_signed_url_is_stable_across_calls(hass, init_integration) -> None:
@@ -36,16 +43,55 @@ async def test_signed_url_changes_when_the_cover_changes(
     assert first != second
 
 
-async def test_signed_url_is_resigned_near_expiry(hass, init_integration) -> None:
-    """The cache re-signs before the signature lapses, not after."""
-    _SIGNED_CACHE.clear()
-    signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
-    key = next(iter(_SIGNED_CACHE))
-    # Pretend the cached signature is about to expire.
-    _SIGNED_CACHE[key] = replace(_SIGNED_CACHE[key], expires=0.0)
-    fresh = signed_cover_url(hass, init_integration.entry_id, "item-1", 9)
-    assert _SIGNED_CACHE[key].expires > 0.0
-    assert fresh.startswith("/api/audiobookshelf_plus/cover/")
+async def test_signed_url_survives_a_restart(hass, init_integration) -> None:
+    """The key is stored, so a dashboard's URLs outlive a Home Assistant restart.
+
+    Home Assistant's own signed paths used an in-memory secret, so every
+    restart turned every poster a dashboard held into a failed request.
+    """
+    before = signed_cover_url(hass, init_integration.entry_id, "item-1", 5)
+    hass.data.pop(_SECRET)
+    await async_load_cover_secret(hass)  # what the next start does
+    assert signed_cover_url(hass, init_integration.entry_id, "item-1", 5) == before
+
+
+async def test_signature_is_per_cover(hass, init_integration) -> None:
+    """One cover's signature does not unlock another."""
+    entry_id = init_integration.entry_id
+    assert _sig(hass, entry_id, "item-1") != _sig(hass, entry_id, "item-2")
+
+
+async def test_bad_signature_is_a_404_not_a_failed_login(
+    hass, init_integration, hass_client_no_auth
+) -> None:
+    """A stale or forged cover URL must never count toward an IP ban.
+
+    Home Assistant bans an address after a few 401s. A dashboard holding a
+    dozen posters with dead signatures used to be exactly that.
+    """
+    client = await hass_client_no_auth()
+    base = f"/api/audiobookshelf_plus/cover/{init_integration.entry_id}/item-1?v=1"
+    for query in ("", "&sig=forged", "&authSig=an-old-home-assistant-signature"):
+        resp = await client.get(base + query)
+        assert resp.status == HTTPStatus.NOT_FOUND
+    assert not hass.http.app.get(KEY_FAILED_LOGIN_ATTEMPTS)
+
+
+async def test_good_signature_serves_the_cover_without_a_login(
+    hass, aioclient_mock, init_integration, hass_client_no_auth
+) -> None:
+    """An <img> tag has no token; the signature alone is enough."""
+    aioclient_mock.get(
+        f"{URL}/api/items/item-1/cover",
+        content=b"imagebytes",
+        headers={"Content-Type": "image/jpeg"},
+    )
+    client = await hass_client_no_auth()
+    resp = await client.get(
+        signed_cover_url(hass, init_integration.entry_id, "item-1", 7)
+    )
+    assert resp.status == HTTPStatus.OK
+    assert await resp.read() == b"imagebytes"
 
 
 async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
@@ -71,7 +117,10 @@ async def test_cover_view_proxies_the_image(hass, init_integration) -> None:
 
     class _Request:
         headers: dict[str, str] = {"Accept": "image/webp"}
-        query: dict[str, str] = {"v": "55"}
+        query: dict[str, str] = {
+            "v": "55",
+            "sig": _sig(hass, init_integration.entry_id),
+        }
 
     view._session.get = lambda *a, **kw: _Response()
     result = await view.get(_Request(), init_integration.entry_id, "item-1")
@@ -93,7 +142,7 @@ async def test_cover_view_revalidates(hass, init_integration) -> None:
 
     class _Request:
         headers = {"If-None-Match": 'W/"item-1-55"'}
-        query = {"v": "55"}
+        query = {"v": "55", "sig": _sig(hass, init_integration.entry_id)}
 
     result = await view.get(_Request(), init_integration.entry_id, "item-1")
     assert result.status == 304
@@ -101,7 +150,6 @@ async def test_cover_view_revalidates(hass, init_integration) -> None:
 
 async def test_cover_view_unknown_entry(hass, init_integration) -> None:
     """A request for an entry that is gone is a 404, not a crash."""
-    from aiohttp import web
 
     from custom_components.audiobookshelf_plus.cover_proxy import (
         AudiobookshelfCoverView,
@@ -111,15 +159,14 @@ async def test_cover_view_unknown_entry(hass, init_integration) -> None:
 
     class _Request:
         headers: dict[str, str] = {}
-        query: dict[str, str] = {}
+        query: dict[str, str] = {"sig": _sig(hass, "no-such-entry")}
 
     result = await view.get(_Request(), "no-such-entry", "item-1")
-    assert isinstance(result, web.HTTPNotFound)
+    assert result.status == HTTPStatus.NOT_FOUND
 
 
 async def test_cover_view_upstream_missing(hass, init_integration) -> None:
     """Audiobookshelf answering with something that is not an image is a 404."""
-    from aiohttp import web
 
     from custom_components.audiobookshelf_plus.cover_proxy import (
         AudiobookshelfCoverView,
@@ -142,16 +189,16 @@ async def test_cover_view_upstream_missing(hass, init_integration) -> None:
 
     class _Request:
         headers: dict[str, str] = {}
-        query = {"v": "1"}
+        query = {"v": "1", "sig": _sig(hass, init_integration.entry_id)}
 
     view._session.get = lambda *a, **kw: _Response()
     result = await view.get(_Request(), init_integration.entry_id, "item-1")
-    assert isinstance(result, web.HTTPNotFound)
+    assert result.status == HTTPStatus.NOT_FOUND
 
 
 async def test_cover_view_upstream_error(hass, init_integration) -> None:
     """A dead server is a 502."""
-    from aiohttp import ClientError, web
+    from aiohttp import ClientError
 
     from custom_components.audiobookshelf_plus.cover_proxy import (
         AudiobookshelfCoverView,
@@ -164,8 +211,8 @@ async def test_cover_view_upstream_error(hass, init_integration) -> None:
 
     class _Request:
         headers: dict[str, str] = {}
-        query = {"v": "1"}
+        query = {"v": "1", "sig": _sig(hass, init_integration.entry_id)}
 
     view._session.get = _boom
     result = await view.get(_Request(), init_integration.entry_id, "item-1")
-    assert isinstance(result, web.HTTPBadGateway)
+    assert result.status == HTTPStatus.BAD_GATEWAY

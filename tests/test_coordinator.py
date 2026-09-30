@@ -44,7 +44,7 @@ async def test_recently_added_entry_shape(hass, init_integration) -> None:
     assert entry["runtime"] == 60
     assert entry["genres"] == "Fantasy, Fiction"
     assert entry["poster"].startswith("/api/audiobookshelf_plus/cover/")
-    assert "authSig=" in entry["poster"]
+    assert "sig=" in entry["poster"]
     assert "description" not in entry
 
 

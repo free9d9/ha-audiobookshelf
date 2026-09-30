@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.3]
+
+### Fixed
+
+- **Cover art could get a dashboard IP-banned after a Home Assistant restart.**
+  Cover URLs were signed with Home Assistant's signed paths, whose secret lives
+  in memory, so every restart invalidated every poster URL a dashboard held. A
+  card that lazy-loads posters then requested dead URLs, Home Assistant
+  answered each with a 401, and with `ip_ban_enabled` its login-attempt limit
+  counts every 401: at a limit of 3, scrolling one stale card could ban a wall
+  display. Covers are now signed with the integration's own key, stored in
+  `.storage`, so URLs stay valid across restarts (and browsers keep them
+  cached), and a stale or forged URL gets a 404, which is not a failed login.
+- The cover view no longer returns aiohttp exception objects, which aiohttp
+  has deprecated.
+
 ## [0.12.2]
 
 ### Fixed
