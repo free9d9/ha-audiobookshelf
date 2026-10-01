@@ -186,3 +186,46 @@ def test_device_falls_back_to_the_app_name() -> None:
     assert _parse_session(audiobooth).device == "AudioBooth iOS 1.11"
     bare = open_session() | {"mediaPlayer": "ios", "deviceInfo": {}}
     assert _parse_session(bare).device == "ios"
+
+
+def test_apps_that_sync_every_20s_pause_sooner() -> None:
+    """Absorb and AudioBooth push downloaded playback every 20s on any network.
+
+    They get the streaming window, so a pause shows in under a minute. Anything
+    else downloaded keeps the wide window the official Android app needs.
+    """
+    from custom_components.audiobookshelf_plus.coordinator import _parse_session
+
+    def downloaded(client: str | None) -> dict:
+        return local_session() | {"deviceInfo": {"clientName": client}}
+
+    for client in ("Absorb 1.10.0", "AudioBooth iOS 1.11 (1784179683)"):
+        assert _parse_session(downloaded(client)).fresh_seconds == (
+            SESSION_FRESH_SECONDS
+        )
+    for client in ("Audiobookshelf Android", None):
+        assert _parse_session(downloaded(client)).fresh_seconds == (
+            LOCAL_SESSION_FRESH_SECONDS
+        )
+    assert _parse_session(open_session()).fresh_seconds == SESSION_FRESH_SECONDS
+
+
+async def test_absorb_pause_shows_within_a_minute(
+    hass, init_integration, mock_rest, freezer
+) -> None:
+    """Brian's own client: Absorb on a Samsung, playing a downloaded book."""
+    absorb = local_session(updated_at=_ms_ago(SESSION_FRESH_SECONDS + 10)) | {
+        "mediaPlayer": "exo-player",
+        "deviceInfo": {
+            "clientName": "Absorb",
+            "clientVersion": "1.10.0",
+            "manufacturer": "samsung",
+            "model": "SM-F968U1",
+        },
+    }
+    mock_rest.async_get_recent_sessions.return_value = [absorb]
+    await _tick(hass, freezer)
+    state = hass.states.get(PLAYER)
+    assert state.state == "paused"
+    assert state.attributes["device"] == "samsung SM-F968U1"
+    assert state.attributes["downloaded"] is True

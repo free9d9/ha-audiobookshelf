@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.3]
+
+### Changed
+
+- **Pauses in Absorb and AudioBooth show within about a minute, not two and a
+  half.** Both apps push downloaded playback to the server every 20 seconds on
+  any connection (checked in their source; Absorb since at least 1.10.0), so
+  their downloaded sessions now get the same 45-second freshness window as
+  streaming. Other apps keep 150 seconds, which the official Android app needs
+  for its once-a-minute cellular syncs.
+
 ## [0.13.2]
 
 ### Fixed

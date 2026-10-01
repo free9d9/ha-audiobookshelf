@@ -36,6 +36,7 @@ from .const import (
     EVENT_PLAYBACK_STARTED,
     EVENT_PLAYBACK_STOPPED,
     EVENT_SCAN_COMPLETED,
+    FAST_LOCAL_SYNC_CLIENTS,
     ISSUE_KEY_EXPIRING,
     ISSUE_TIMEZONE_MISMATCH,
     KEY_EXPIRY_WARN_DAYS,
@@ -96,6 +97,8 @@ class SessionData:
     device: str
     # Downloaded playback, synced from the device rather than streamed.
     is_local: bool = False
+    # How long after its last sync this session still counts as playing.
+    fresh_seconds: int = SESSION_FRESH_SECONDS
 
     @property
     def is_live(self) -> bool:
@@ -106,8 +109,7 @@ class SessionData:
         seconds, or every 60 for downloaded playback on a metered connection.
         """
         age = (datetime.now(UTC) - self.updated_at).total_seconds()
-        fresh = LOCAL_SESSION_FRESH_SECONDS if self.is_local else SESSION_FRESH_SECONDS
-        return age <= fresh
+        return age <= self.fresh_seconds
 
 
 @dataclass(slots=True)
@@ -864,6 +866,7 @@ def _parse_session(raw: Any) -> SessionData | None:
     if updated is None:
         return None
     info = raw.get("deviceInfo") or {}
+    is_local = raw.get("playMethod") == PLAY_METHOD_LOCAL
     if model := info.get("model"):
         device = f"{info.get('manufacturer', '')} {model}".strip()
     elif client := info.get("clientName"):
@@ -882,8 +885,23 @@ def _parse_session(raw: Any) -> SessionData | None:
         updated_at=updated,
         is_podcast=bool(raw.get("episodeId")),
         device=device,
-        is_local=raw.get("playMethod") == PLAY_METHOD_LOCAL,
+        is_local=is_local,
+        fresh_seconds=_fresh_seconds(is_local, info.get("clientName")),
     )
+
+
+def _fresh_seconds(is_local: bool, client: Any) -> int:
+    """How long a session may go between syncs and still be playing.
+
+    Streaming clients sync every 10 to 20 seconds. Downloaded playback varies by
+    app: the official Android app syncs it only every 60 seconds on cellular,
+    so it gets a wide window, except from apps known to sync every 20.
+    """
+    if not is_local:
+        return SESSION_FRESH_SECONDS
+    if isinstance(client, str) and client.startswith(FAST_LOCAL_SYNC_CLIENTS):
+        return SESSION_FRESH_SECONDS
+    return LOCAL_SESSION_FRESH_SECONDS
 
 
 def _parse_latest_session(raw: Any) -> LatestSession | None:

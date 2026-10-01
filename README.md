@@ -241,15 +241,16 @@ server, shape how this works:
 - **Downloaded playback shows, with a longer delay.** When an app plays a book it has
   downloaded, it never opens a session on the server and emits no socket event, not even
   to an admin. What it does do, while the phone has a connection, is sync the session to
-  `/api/session/local` as it plays: every ~20 seconds of listening in AudioBooth, every
-  15 seconds on Wi-Fi and every 60 on cellular in the official Android app. That lands in
+  `/api/session/local` as it plays: every 20 seconds in Absorb and AudioBooth, every 15
+  seconds on Wi-Fi and every 60 on cellular in the official Android app. That lands in
   Audiobookshelf's database, so the integration reads recent sessions back from
   `/api/sessions` on the same 15-second poll and shows them on the media player, with
   `downloaded: true` in its attributes.
 
-  Because a cellular sync can be a minute apart, a downloaded session counts as playing
-  for 150 seconds after its last sync (streaming gets 45), so a pause takes up to about
-  two and a half minutes to show. The server never closes a downloaded session, so after
+  A downloaded session from Absorb or AudioBooth counts as playing for 45 seconds after
+  its last sync, like streaming, so a pause shows within about a minute. From other apps
+  it gets 150 seconds, because the official Android app's cellular syncs can be a minute
+  apart, so a pause takes up to about two and a half minutes to show. The server never closes a downloaded session, so after
   its last sync it shows as paused for 30 minutes, then the player goes idle.
   `playback_started` and `playback_stopped` fire for downloaded sessions too.
 

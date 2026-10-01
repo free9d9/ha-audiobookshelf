@@ -28,6 +28,11 @@ SESSION_FRESH_SECONDS: Final = 45
 # window than streaming gets.
 PLAY_METHOD_LOCAL: Final = 3
 LOCAL_SESSION_FRESH_SECONDS: Final = 150
+# Clients verified (in their source) to sync downloaded playback every 20s on any
+# connection: Absorb (audio_player_service.dart, syncInterval = 20, since at
+# least 1.10.0) and AudioBooth (SessionManager, 20s of pending listening). They
+# get the streaming window, so a pause shows in under a minute, not 2.5.
+FAST_LOCAL_SYNC_CLIENTS: Final = ("Absorb", "AudioBooth")
 # A local session is never closed on the server, so after its last sync it
 # shows as paused for this long, then the player goes idle.
 LOCAL_SESSION_PAUSED_WINDOW: Final = timedelta(minutes=30)
