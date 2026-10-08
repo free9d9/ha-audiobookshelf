@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import aioaudiobookshelf_plus as absapi
 import aiohttp
-import voluptuous as vol
 from aioaudiobookshelf_plus.client.session_configuration import SessionConfiguration
 from aioaudiobookshelf_plus.exceptions import LoginError, TokenIsMissingError
 from aiohttp import ClientError
@@ -26,6 +25,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AudiobookshelfRest, AudiobookshelfRestError
 from .const import CONF_LINKED_USERS, DOMAIN
+
+if TYPE_CHECKING:
+    # Home Assistant aliases voluptuous to probatio from 2026.9 and types schema
+    # arguments as probatio from 2026.10. Runtime keeps voluptuous for 2026.6-8.
+    import probatio as vol
+else:
+    import voluptuous as vol
 
 _LOGGER = logging.getLogger(__name__)
 

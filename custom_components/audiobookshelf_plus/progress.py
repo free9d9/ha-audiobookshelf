@@ -11,9 +11,8 @@ that a child can start a series again from the beginning.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
@@ -27,6 +26,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import AudiobookshelfRest, AudiobookshelfRestError
 from .const import CONF_CONFIG_ENTRY, DOMAIN, SERVICE_REMOVE_PROGRESS
 from .playback import resolve_target
+
+if TYPE_CHECKING:
+    # Home Assistant aliases voluptuous to probatio from 2026.9 and types schema
+    # arguments as probatio from 2026.10. Runtime keeps voluptuous for 2026.6-8.
+    import probatio as vol
+else:
+    import voluptuous as vol
 
 _LOGGER = logging.getLogger(__name__)
 
