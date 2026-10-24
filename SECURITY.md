@@ -4,7 +4,7 @@
 
 Please **do not** open a public issue. Use
 [GitHub's private vulnerability reporting](https://github.com/free9d9/ha-audiobookshelf/security/advisories/new),
-or email brian@freemanator.com.
+or, if you cannot use GitHub, email support@bamfapps.com.
 
 You can expect an acknowledgement within a week.
 
