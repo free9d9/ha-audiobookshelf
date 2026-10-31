@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
@@ -63,7 +62,13 @@ from .const import (
 )
 
 if TYPE_CHECKING:
+    # Home Assistant aliases voluptuous to probatio from 2026.9 and types schema
+    # arguments as probatio from 2026.10. Runtime keeps voluptuous for 2026.6-8.
+    import probatio as vol
+
     from .coordinator import AudiobookshelfConfigEntry
+else:
+    import voluptuous as vol
 
 _LOGGER = logging.getLogger(__name__)
 
