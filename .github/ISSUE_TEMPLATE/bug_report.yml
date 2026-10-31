@@ -60,8 +60,9 @@ body:
     attributes:
       label: Diagnostics
       description: >
-        Settings → Devices & Services → Audiobookshelf → ⋮ → Download diagnostics.
-        API keys and user ids are redacted automatically, but do read it before pasting.
+        Settings → Devices & Services → Audiobookshelf Plus → ⋮ → Download diagnostics.
+        API keys, user ids, usernames and the server URL are redacted automatically,
+        but do read it before pasting.
       render: json
 
   - type: textarea

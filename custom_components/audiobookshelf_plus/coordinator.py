@@ -9,9 +9,8 @@ import logging
 import time
 from contextlib import aclosing
 from dataclasses import dataclass, field, replace
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import aioaudiobookshelf_plus as absapi
 from aioaudiobookshelf_plus.client import AdminClient, SocketClient
@@ -305,7 +304,17 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
             _LOGGER.debug("Could not read the server's time zone: %s", err)
             return
         ha_zone = self.hass.config.time_zone
-        if abs_zone is None or _same_clock(abs_zone, ha_zone):
+        if abs_zone is None or abs_zone == ha_zone:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+        # The first lookup of a zone reads tzdata from disk, so it must not run
+        # on the event loop; Home Assistant's helper hands it to the executor.
+        try:
+            abs_tz = await dt_util.async_get_time_zone(abs_zone)
+        except ValueError:  # a malformed name such as "../etc"
+            abs_tz = None
+        # An unknown name is not evidence of a problem.
+        if abs_tz is None or _same_clock(abs_tz, dt_util.get_default_time_zone()):
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
             return
         ir.async_create_issue(
@@ -954,21 +963,15 @@ def _server_time_zone(authorize: dict[str, Any]) -> str | None:
     return str(zone) if zone else None
 
 
-def _same_clock(zone_a: str, zone_b: str) -> bool:
-    """Whether two IANA zones keep the same wall clock, now and in six months.
+def _same_clock(zone_a: tzinfo, zone_b: tzinfo) -> bool:
+    """Whether two zones keep the same wall clock, now and in six months.
 
     Names differ for identical clocks (US/Hawaii and Pacific/Honolulu), and two
     zones can agree in winter and split in summer, hence two sample points.
     """
-    if zone_a == zone_b:
-        return True
-    try:
-        a, b = ZoneInfo(zone_a), ZoneInfo(zone_b)
-    except (ZoneInfoNotFoundError, ValueError):
-        return True  # an unknown name is not evidence of a problem
     now = datetime.now(UTC)
     return all(
-        when.astimezone(a).utcoffset() == when.astimezone(b).utcoffset()
+        when.astimezone(zone_a).utcoffset() == when.astimezone(zone_b).utcoffset()
         for when in (now, now + timedelta(days=182))
     )
 

@@ -19,7 +19,8 @@ server. Treat a Home Assistant backup as you would treat those keys.
    `POST /api/api-keys` so that no passwords are ever collected. Unlinking a user revokes
    their key on the server and removes it from Home Assistant.
 
-Diagnostics redact both, along with every user id. If you paste diagnostics into an issue,
+Diagnostics redact both, along with the server URL and every user id, and account usernames
+are replaced with neutral labels (`user_1`, `user_2`). If you paste diagnostics into an issue,
 nothing sensitive goes with it - but read it first anyway.
 
 ## Design notes that are security-relevant

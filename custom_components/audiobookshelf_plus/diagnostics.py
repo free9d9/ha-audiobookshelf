@@ -14,7 +14,8 @@ from .coordinator import AudiobookshelfConfigEntry
 
 # The entry's own admin key, plus every per-user key the options flow minted.
 # All of them are full account credentials. The server URL goes too: people
-# attach diagnostics to public issues, and it names their host.
+# attach diagnostics to public issues, and it names their host. So do account
+# usernames, which name the household; those become neutral labels below.
 TO_REDACT = {
     CONF_API_KEY,
     CONF_URL,
@@ -23,7 +24,22 @@ TO_REDACT = {
     "ha_user_id",
     "user_id",
     "key_id",
+    "username",
 }
+
+
+def _user_labels(
+    server_user_ids: list[str], linked_user_ids: list[str]
+) -> dict[str, str]:
+    """Give every account a neutral label, the same one in every section.
+
+    A dump still has to show that the linked account is the one that is
+    listening, so each Audiobookshelf user id maps to one `user_N`.
+    """
+    labels: dict[str, str] = {}
+    for user_id in [*server_user_ids, *linked_user_ids]:
+        labels.setdefault(user_id, f"user_{len(labels) + 1}")
+    return labels
 
 
 async def async_get_config_entry_diagnostics(
@@ -32,6 +48,8 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data
     data = coordinator.data
+    linked: dict[str, Any] = entry.options.get(CONF_LINKED_USERS, {})
+    labels = _user_labels(list(data.users), list(linked))
 
     return {
         "entry": {
@@ -39,10 +57,10 @@ async def async_get_config_entry_diagnostics(
             "options": {
                 CONF_LINKED_USERS: [
                     {
-                        "username": user["username"],
+                        "user": labels[user_id],
                         "mapped_to_ha_user": bool(user.get("ha_user_id")),
                     }
-                    for user in entry.options.get(CONF_LINKED_USERS, {}).values()
+                    for user_id, user in linked.items()
                 ]
             },
         },
@@ -71,11 +89,9 @@ async def async_get_config_entry_diagnostics(
             }
             for library in data.libraries.values()
         ],
-        # Usernames are the whole point of these entities, so they stay. Ids and
-        # tokens do not.
         "users": [
             {
-                "username": user.username,
+                "user": labels[user_id],
                 "type": user.user_type,
                 "has_open_session": user.session is not None,
                 "session_is_live": user.session.is_live if user.session else None,
@@ -88,7 +104,7 @@ async def async_get_config_entry_diagnostics(
                     else None
                 ),
             }
-            for user in data.users.values()
+            for user_id, user in data.users.items()
         ],
-        "listening_now": [user.username for user in data.listening_now],
+        "listening_now": [labels[user.user_id] for user in data.listening_now],
     }

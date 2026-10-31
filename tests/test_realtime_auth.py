@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from homeassistant.helpers import issue_registry as ir
@@ -196,12 +197,36 @@ async def test_unreadable_server_zone_raises_nothing(
     assert _issue(hass, mock_config_entry) is None
 
 
+async def test_server_zone_is_loaded_off_the_event_loop(
+    hass, mock_config_entry, mock_abs_client, mock_rest
+) -> None:
+    """The first ZoneInfo for a zone reads tzdata, so it goes via HA's helper."""
+    await hass.config.async_set_time_zone("Pacific/Honolulu")
+    mock_rest.async_authorize.return_value = {"serverSettings": {"timeZone": "UTC"}}
+    with patch(
+        "custom_components.audiobookshelf_plus.coordinator.dt_util.async_get_time_zone",
+        wraps=dt_util.async_get_time_zone,
+    ) as lookup:
+        await _setup(hass, mock_config_entry, mock_abs_client)
+    lookup.assert_awaited_once_with("UTC")
+    assert _issue(hass, mock_config_entry) is not None
+
+
+@pytest.mark.parametrize("zone", ["Not/AZone", "../etc"])
+async def test_unknown_server_zone_raises_nothing(
+    hass, mock_config_entry, mock_abs_client, mock_rest, zone
+) -> None:
+    """An unknown or malformed name is not evidence of a problem."""
+    await hass.config.async_set_time_zone("Pacific/Honolulu")
+    mock_rest.async_authorize.return_value = {"serverSettings": {"timeZone": zone}}
+    await _setup(hass, mock_config_entry, mock_abs_client)
+    assert _issue(hass, mock_config_entry) is None
+
+
 def test_same_clock() -> None:
-    assert _same_clock("UTC", "UTC")
-    assert _same_clock("US/Hawaii", "Pacific/Honolulu")
-    assert not _same_clock("UTC", "Pacific/Honolulu")
+    utc, honolulu = ZoneInfo("UTC"), ZoneInfo("Pacific/Honolulu")
+    assert _same_clock(utc, utc)
+    assert _same_clock(ZoneInfo("US/Hawaii"), honolulu)
+    assert not _same_clock(utc, honolulu)
     # Same offset in northern winter, an hour apart in summer.
-    assert not _same_clock("Europe/London", "Africa/Abidjan")
-    # An unknown name is not evidence of a problem.
-    assert _same_clock("Not/AZone", "UTC")
-    assert _same_clock("../etc", "UTC")
+    assert not _same_clock(ZoneInfo("Europe/London"), ZoneInfo("Africa/Abidjan"))

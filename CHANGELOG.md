@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.4]
+
+### Fixed
+
+- **Diagnostics no longer name anyone.** Account usernames were kept on
+  purpose, in the linked users, the server's users and `listening_now`, which
+  published the names of everyone in the household whenever a dump went into
+  a public issue. Each account now gets a neutral label (`user_1`, `user_2`),
+  the same one in every section, so a dump still shows which linked account is
+  the one listening.
+- **Setup no longer reads time zone data on the event loop.** The check for a
+  server keeping a different clock built a `ZoneInfo` from the zone the server
+  reports, and the first lookup of a zone reads tzdata from disk, which Home
+  Assistant's blocking-call detector reports. It now goes through Home
+  Assistant's own async helper and compares against Home Assistant's zone.
+
 ## [0.13.3]
 
 ### Changed

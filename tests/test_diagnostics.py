@@ -42,7 +42,37 @@ async def test_diagnostics_redacts_every_credential(hass, init_integration) -> N
     assert "key-1" not in blob
     # But the useful part survives.
     assert result["entry"]["options"][CONF_LINKED_USERS] == [
-        {"username": "Alice", "mapped_to_ha_user": True}
+        {"user": "user_1", "mapped_to_ha_user": True}
+    ]
+
+
+async def test_diagnostics_never_name_an_account(hass, init_integration) -> None:
+    """People attach diagnostics to public issues; usernames name the household.
+
+    Every account gets one neutral label, the same in every section, so the
+    dump still shows which linked account is the one listening.
+    """
+    hass.config_entries.async_update_entry(
+        init_integration,
+        options={
+            CONF_LINKED_USERS: {
+                "u2": {"username": "Bob", "api_key": make_api_key()},
+                # Linked once, since deleted on the server.
+                "gone": {"username": "Carol", "api_key": make_api_key()},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    result = await async_get_config_entry_diagnostics(hass, init_integration)
+    blob = json.dumps(result, default=str)
+
+    for name in ("Alice", "Bob", "Carol"):
+        assert name not in blob
+    assert [u["user"] for u in result["users"]] == ["user_1", "user_2"]
+    assert result["entry"]["options"][CONF_LINKED_USERS] == [
+        {"user": "user_2", "mapped_to_ha_user": False},
+        {"user": "user_3", "mapped_to_ha_user": False},
     ]
 
 
@@ -57,7 +87,8 @@ async def test_diagnostics_content(hass, init_integration) -> None:
     assert names == {"Audiobooks", "E-Books"}
     ebooks = next(x for x in result["libraries"] if x["name"] == "E-Books")
     assert ebooks["detected_as_ebook"] is True
-    assert {user["username"] for user in result["users"]} == {"Alice", "Bob"}
+    assert {user["user"] for user in result["users"]} == {"user_1", "user_2"}
+    assert {user["type"] for user in result["users"]} == {"admin", "user"}
     assert result["listening_now"] == []
 
 
@@ -71,8 +102,9 @@ async def test_diagnostics_includes_a_live_session(
     await hass.async_block_till_done()
 
     result = await async_get_config_entry_diagnostics(hass, mock_config_entry)
-    alice = next(u for u in result["users"] if u["username"] == "Alice")
+    alice = next(u for u in result["users"] if u["user"] == "user_1")
     assert alice["has_open_session"] is True
     assert alice["session_is_live"] is True
     assert alice["session"]["title"] == "A Book"
-    assert result["listening_now"] == ["Alice"]
+    assert result["listening_now"] == ["user_1"]
+    assert "Alice" not in json.dumps(result, default=str)
