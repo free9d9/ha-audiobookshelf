@@ -1,4 +1,4 @@
 # Pinned to the Home Assistant release this integration targets.
-# pytest-homeassistant-custom-component 0.13.371 -> homeassistant==2026.10.0
-pytest-homeassistant-custom-component==0.13.371
+# pytest-homeassistant-custom-component 0.13.375 -> homeassistant==2026.10.4
+pytest-homeassistant-custom-component==0.13.375
 aioaudiobookshelf-plus==0.2.0
