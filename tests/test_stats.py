@@ -8,7 +8,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.audiobookshelf_plus import async_migrate_entry
 from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError

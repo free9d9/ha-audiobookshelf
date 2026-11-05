@@ -1,4 +1,6 @@
-# Pinned to the Home Assistant release this integration targets.
-# pytest-homeassistant-custom-component 0.13.371 -> homeassistant==2026.10.0
-pytest-homeassistant-custom-component==0.13.371
+# Pinned to the Home Assistant release this integration targets. This is Home
+# Assistant's own test package, which replaced pytest-homeassistant-custom-component
+# at 2026.11. Its version matches Home Assistant's, and it pins that exact release.
+pytest-homeassistant==2026.11.0b6
+pytest-cov
 aioaudiobookshelf-plus==0.2.0

@@ -197,7 +197,7 @@ async def test_expiring_key_raises_a_repair_issue(
 ) -> None:
     """Warn before the key lapses, not after."""
     from homeassistant.const import CONF_API_KEY, CONF_URL
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from pytest_homeassistant.common import MockConfigEntry
 
     from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS
 
@@ -231,7 +231,7 @@ async def test_expiry_date_is_rendered_in_the_local_timezone(
     from datetime import UTC, datetime, timedelta
 
     from homeassistant.const import CONF_API_KEY, CONF_URL
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from pytest_homeassistant.common import MockConfigEntry
 
     from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS
 

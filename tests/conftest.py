@@ -12,12 +12,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.const import CONF_API_KEY, CONF_URL
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS, DOMAIN
 from custom_components.audiobookshelf_plus.release import ReleaseInfo
-
-pytest_plugins = "pytest_homeassistant_custom_component"
 
 URL = "http://abs.example.com:13378"
 # Item timestamps are historical; a user's "last listened" must be recent, or the

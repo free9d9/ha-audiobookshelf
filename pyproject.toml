@@ -1,8 +1,11 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
 testpaths = ["tests"]
 norecursedirs = [".git"]
-addopts = "--cov=custom_components.audiobookshelf_plus --cov-report=term-missing"
+# no:respx lets Home Assistant install its httpx alias before respx is imported.
+addopts = "-p no:respx --cov=custom_components.audiobookshelf_plus --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["custom_components/audiobookshelf_plus"]

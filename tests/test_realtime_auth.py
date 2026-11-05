@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+from pytest_homeassistant.common import async_fire_time_changed
 
 from custom_components.audiobookshelf_plus.api import AudiobookshelfRestError
 from custom_components.audiobookshelf_plus.const import DOMAIN, REFRESH_COOLDOWN_SECONDS
