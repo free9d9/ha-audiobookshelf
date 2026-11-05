@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.5]
+
+### Changed
+
+- **Ready for Home Assistant 2026.11.** Install steps now cover the built-in
+  Marketplace, which replaces HACS in that release, and the manifest declares
+  its Marketplace category. Tested against 2026.11.0.
+
+### Fixed
+
+- **Removing a stale device no longer logs a deprecation warning.** When a
+  library or user was deleted on the server, the cleanup used a device registry
+  call that Home Assistant will stop accepting in 2027.8.
+- **Device info no longer leans on a compatibility layer.** `DeviceInfo` stopped
+  being a dict in 2026.11, and unpacking it only works through a layer Home
+  Assistant plans to deprecate.
+
 ## [0.13.4]
 
 ### Fixed

@@ -279,7 +279,7 @@ async def test_new_library_appears_without_a_restart(
 
 
 async def test_removed_library_device_is_pruned(
-    hass, init_integration, mock_rest
+    hass, init_integration, mock_rest, caplog
 ) -> None:
     """Gold `stale-devices`."""
     from .conftest import _library
@@ -296,6 +296,7 @@ async def test_removed_library_device_is_pruned(
 
     after = dr.async_entries_for_config_entry(registry, init_integration.entry_id)
     assert not any(d.name == "E-Books" for d in after)
+    assert "will stop working" not in caplog.text
 
 
 async def test_manual_device_removal_only_when_gone(hass, init_integration) -> None:
