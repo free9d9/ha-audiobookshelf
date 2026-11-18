@@ -9,7 +9,7 @@
 [![Release](https://img.shields.io/github/v/release/free9d9/ha-audiobookshelf?display_name=tag&sort=semver)](https://github.com/free9d9/ha-audiobookshelf/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.6%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/free9d9/ha-audiobookshelf)](LICENSE)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](#development)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 
 </div>
 
@@ -559,7 +559,7 @@ Then remove the integration from HACS.
 
 ```bash
 pip install -r requirements-test.txt
-pytest                                        # 141 tests, 99% coverage
+pytest                                        # 318 tests, 100% coverage
 mypy custom_components/audiobookshelf_plus --strict
 ruff check custom_components tests
 ```
@@ -571,14 +571,14 @@ where Audiobookshelf's API documentation disagrees with the server.
 ### Quality scale
 
 Tracked in [`quality_scale.yaml`](custom_components/audiobookshelf_plus/quality_scale.yaml):
-**47 rules done, 5 exempt, 2 outstanding.**
+**48 rules done, 5 exempt, 1 outstanding.**
 
 | Tier | Status |
 | --- | --- |
 | Bronze | Complete except `brands` (icon PR pending) |
-| Silver | Complete - 99% coverage, reauth, graceful unavailability |
+| Silver | Complete - 100% coverage, reauth, graceful unavailability |
 | Gold | Complete - diagnostics, devices, repairs, reconfigure, translations. `discovery` is *exempt*: Audiobookshelf advertises nothing over mDNS |
-| Platinum | `async-dependency` and `inject-websession` done. `strict-typing` blocked only on [`aioaudiobookshelf`](https://github.com/music-assistant/aioaudiobookshelf) shipping a `py.typed` marker - our own code passes `mypy --strict` and ships one |
+| Platinum | `async-dependency` and `inject-websession` done. `strict-typing` done: our own code passes `mypy --strict`, and `aioaudiobookshelf-plus` ships a `py.typed` marker |
 
 ## Credits
 
