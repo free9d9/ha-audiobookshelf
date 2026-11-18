@@ -10,7 +10,7 @@ All notable changes to this project are documented here. The format is based on
 
 - **Ready for Home Assistant 2026.11.** Install steps now cover the built-in
   Marketplace, which replaces HACS in that release, and the manifest declares
-  its Marketplace category. Tested against 2026.11.0.
+  its Marketplace category. Tested against 2026.11.2.
 
 ### Fixed
 
