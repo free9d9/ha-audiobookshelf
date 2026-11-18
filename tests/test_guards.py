@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.audiobookshelf_plus.const import CONF_LINKED_USERS, DOMAIN
 from custom_components.audiobookshelf_plus.coordinator import _api_key_expiry, _is_new

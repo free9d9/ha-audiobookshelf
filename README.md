@@ -5,7 +5,7 @@
 **Real-time.** Your library changes, and Home Assistant knows immediately.
 
 [![Validate](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml/badge.svg)](https://github.com/free9d9/ha-audiobookshelf/actions/workflows/validate.yml)
-[![HACS](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz/)
+[![HACS](https://img.shields.io/badge/HACS-default-41BDF5.svg)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/free9d9/ha-audiobookshelf?display_name=tag&sort=semver)](https://github.com/free9d9/ha-audiobookshelf/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.6%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/free9d9/ha-audiobookshelf)](LICENSE)
@@ -151,12 +151,15 @@ Progress is only ever written from a position the speaker actually reported.
 
 ## Installation
 
-### HACS
+### Marketplace (Home Assistant 2026.11 and later)
 
-1. HACS → ⋮ → **Custom repositories**
-2. Repository: `https://github.com/free9d9/ha-audiobookshelf` - Category: **Integration**
-3. Install **Audiobookshelf Plus**, then restart Home Assistant.
-4. **Settings → Devices & Services → Add Integration → Audiobookshelf Plus.**
+1. **Settings → Marketplace**, find **Audiobookshelf Plus**, and install it.
+2. **Settings → Devices & Services → Add Integration → Audiobookshelf Plus.**
+
+### HACS (before Home Assistant 2026.11)
+
+1. In HACS, find **Audiobookshelf Plus** and download it, then restart Home Assistant.
+2. **Settings → Devices & Services → Add Integration → Audiobookshelf Plus.**
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=audiobookshelf_plus)
 
@@ -553,7 +556,7 @@ server rather than in Home Assistant:
    Audiobookshelf under Settings → API Keys - they are named `Home Assistant (<user>)`.
 2. **The admin API key you created during setup.** Delete that one too, in the same place.
 
-Then remove the integration from HACS.
+Then remove the integration from Marketplace (HACS before Home Assistant 2026.11).
 
 ## Development
 

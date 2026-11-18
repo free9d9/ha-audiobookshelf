@@ -311,7 +311,10 @@ class AudiobookshelfCoordinator(DataUpdateCoordinator[AudiobookshelfData]):
         # on the event loop; Home Assistant's helper hands it to the executor.
         try:
             abs_tz = await dt_util.async_get_time_zone(abs_zone)
-        except ValueError:  # a malformed name such as "../etc"
+        # Home Assistant 2026.11 returns None for a malformed name such as
+        # "../etc"; 2026.6 through 2026.10 raise instead, and the tests only
+        # run against the newest release.
+        except ValueError:  # pragma: no cover
             abs_tz = None
         # An unknown name is not evidence of a problem.
         if abs_tz is None or _same_clock(abs_tz, dt_util.get_default_time_zone()):

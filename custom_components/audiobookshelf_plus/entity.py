@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any
 
 from homeassistant.const import MAJOR_VERSION, MINOR_VERSION
 from homeassistant.core import callback
@@ -26,24 +26,26 @@ from .coordinator import (
 VIA_DEVICE_ID_SUPPORTED = (MAJOR_VERSION, MINOR_VERSION) >= (2026, 8)
 
 
-def _via_server(coordinator: AudiobookshelfCoordinator) -> DeviceInfo:
-    """Link a library or user device to the server device."""
+def _via_server(coordinator: AudiobookshelfCoordinator) -> dict[str, Any]:
+    """Return the device fields that link a library or user device to the server."""
     if VIA_DEVICE_ID_SUPPORTED and coordinator.server_device_id is not None:
-        return DeviceInfo(via_device_id=coordinator.server_device_id)
-    # Typed against current Home Assistant, whose DeviceInfo no longer declares
-    # via_device; the releases that reach this line still accept it.
-    return cast(DeviceInfo, {"via_device": (DOMAIN, coordinator.entry_id)})
+        return {"via_device_id": coordinator.server_device_id}
+    return {"via_device": (DOMAIN, coordinator.entry_id)}
 
 
-def server_device_info(coordinator: AudiobookshelfCoordinator) -> DeviceInfo:
-    """Describe the server device that every library and user device hangs off."""
-    return DeviceInfo(
-        identifiers={(DOMAIN, coordinator.entry_id)},
-        entry_type=DeviceEntryType.SERVICE,
-        manufacturer="Audiobookshelf",
-        name="Audiobookshelf Plus",
-        configuration_url=coordinator.base_url,
-    )
+def server_device_fields(coordinator: AudiobookshelfCoordinator) -> dict[str, Any]:
+    """Describe the server device that every library and user device hangs off.
+
+    A plain dict, because it also goes straight to the device registry, and
+    DeviceInfo stopped being a dict in Home Assistant 2026.11.
+    """
+    return {
+        "identifiers": {(DOMAIN, coordinator.entry_id)},
+        "entry_type": DeviceEntryType.SERVICE,
+        "manufacturer": "Audiobookshelf",
+        "name": "Audiobookshelf Plus",
+        "configuration_url": coordinator.base_url,
+    }
 
 
 @callback
@@ -85,7 +87,7 @@ class AudiobookshelfEntity(CoordinatorEntity[AudiobookshelfCoordinator]):
         """Initialise the entity."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry_id}_{key}"
-        self._attr_device_info = server_device_info(coordinator)
+        self._attr_device_info = DeviceInfo(**server_device_fields(coordinator))
 
 
 class AudiobookshelfLibraryEntity(CoordinatorEntity[AudiobookshelfCoordinator]):

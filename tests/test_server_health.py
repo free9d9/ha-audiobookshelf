@@ -13,7 +13,7 @@ from homeassistant.components.update import SERVICE_INSTALL, UpdateEntityFeature
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+from pytest_homeassistant.common import async_fire_time_changed
 
 from custom_components.audiobookshelf_plus.const import (
     EVENT_SCAN_COMPLETED,

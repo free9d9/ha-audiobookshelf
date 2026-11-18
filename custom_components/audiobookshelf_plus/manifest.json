@@ -1,6 +1,9 @@
 {
   "domain": "audiobookshelf_plus",
   "name": "Audiobookshelf Plus",
+  "categories": [
+    "media_entertainment"
+  ],
   "codeowners": [
     "@free9d9"
   ],
@@ -20,5 +23,5 @@
   "requirements": [
     "aioaudiobookshelf-plus==0.2.0"
   ],
-  "version": "0.13.4"
+  "version": "0.13.5"
 }

@@ -23,7 +23,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import Context
 from homeassistant.exceptions import ServiceValidationError
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.audiobookshelf_plus.const import (
     CONF_LINKED_USERS,

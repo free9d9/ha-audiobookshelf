@@ -12,7 +12,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
 from .coordinator import AudiobookshelfConfigEntry, AudiobookshelfCoordinator
 from .cover_proxy import AudiobookshelfCoverView, async_load_cover_secret
-from .entity import server_device_info
+from .entity import server_device_fields
 from .playback import async_setup_services, async_teardown
 from .progress import async_setup_remove_progress
 from .year_in_review import async_setup_year_in_review
@@ -91,7 +91,7 @@ async def async_setup_entry(
     coordinator.server_device_id = (
         dr.async_get(hass)
         .async_get_or_create(
-            config_entry_id=entry.entry_id, **server_device_info(coordinator)
+            config_entry_id=entry.entry_id, **server_device_fields(coordinator)
         )
         .id
     )
@@ -119,9 +119,7 @@ def _async_prune_devices(hass: HomeAssistant, entry: AudiobookshelfConfigEntry) 
     registry = dr.async_get(hass)
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if not any(ident in valid for ident in device.identifiers):
-            registry.async_update_device(
-                device.id, remove_config_entry_id=entry.entry_id
-            )
+            registry.async_remove_device(device.id)
 
 
 async def async_remove_config_entry_device(

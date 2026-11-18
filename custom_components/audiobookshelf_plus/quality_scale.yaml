@@ -37,12 +37,11 @@ rules:
       pauses, so a pause can only be noticed by polling.
   common-modules: done
   brands:
-    status: todo
+    status: done
     comment: >-
-      home-assistant/brands has an entry for the old domain audiobookshelf, but
-      not yet for audiobookshelf_plus. A brands PR adding
-      custom_integrations/audiobookshelf_plus is needed before this domain's
-      icon resolves from brands.home-assistant.io.
+      Ships its own icons in the integration's brand/ folder, which Home
+      Assistant serves for custom integrations, so no home-assistant/brands
+      entry is needed.
   dependency-transparency:
     status: done
     comment: aioaudiobookshelf is Apache-2.0, on PyPI, asyncio-native.
