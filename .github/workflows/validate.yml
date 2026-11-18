@@ -59,6 +59,7 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install -r requirements-test.txt
-      - run: pytest --cov-fail-under=95
+      # The coverage floor lives in pyproject.toml (fail_under = 100).
+      - run: pytest
       - uses: codecov/codecov-action@v7
         continue-on-error: true
