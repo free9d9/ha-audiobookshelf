@@ -562,7 +562,7 @@ Then remove the integration from Marketplace (HACS before Home Assistant 2026.11
 
 ```bash
 pip install -r requirements-test.txt
-pytest                                        # 318 tests, 100% coverage
+pytest                                        # 320 tests, 100% coverage
 mypy custom_components/audiobookshelf_plus --strict
 ruff check custom_components tests
 ```
