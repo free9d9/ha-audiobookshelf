@@ -19,8 +19,9 @@ pip install -r requirements-test.txt
 pytest
 ```
 
-`requirements-test.txt` pins `pytest-homeassistant-custom-component` to the exact Home
-Assistant release this integration targets. Bump both together.
+`requirements-test.txt` pins `pytest-homeassistant`, Home Assistant's own test package,
+to the exact Home Assistant release this integration targets. Its version is the Home
+Assistant version, so bumping it is the whole change.
 
 ## Before you open a pull request
 
@@ -28,11 +29,11 @@ Assistant release this integration targets. Bump both together.
 ruff check custom_components tests
 ruff format --check custom_components tests
 mypy custom_components/audiobookshelf_plus --strict
-pytest --cov-fail-under=95
+pytest
 ```
 
-All four run in CI. Coverage is currently 99% with every module at or above 98%; please
-do not regress it. New behaviour needs a test.
+All four run in CI. Coverage is 100 percent and `pyproject.toml` sets that as the floor,
+so plain `pytest` fails on any untested line. New behaviour needs a test.
 
 ## What this project cares about
 
